@@ -334,7 +334,7 @@ document.addEventListener('visibilitychange', () => {
 
 /* ---------- Dropbox ---------- */
 const appKey = () => DEFAULT_APP_KEY || localStorage.getItem(LS.key) || '';
-const redirectUri = () => (location.hostname.endsWith('github.io') ? location.origin + '/atode/' : location.origin + location.pathname);
+const redirectUri = () => (location.hostname.endsWith('github.io') ? location.origin + '/Atode/' : location.origin + location.pathname);
 const connected = () => !!load(LS.tok, null)?.r && !!appKey();
 async function sha256(s) { return crypto.subtle.digest('SHA-256', enc.encode(s)); }
 async function connect() {

@@ -1,4 +1,4 @@
-const APP = 'https://pikoponpoko.github.io/atode/';
+const APP = 'https://pikoponpoko.github.io/Atode/';
 
 async function save({ url = '', title = '', text = '' }) {
   if (!/^https?:/.test(url)) url = '';
