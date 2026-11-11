@@ -3,6 +3,7 @@
   --text:#0e1116; --sub:#5f6775; --faint:#6f7784;
   --accent:#3355ff; --accent-soft:#e6ebff; --on-accent:#ffffff;
   --secret:#7c4dff; --danger:#e5484d; --green:#1f9d55;
+  --ct-gray:var(--text); --ct-green:var(--text); --ct-blue:var(--text); --ct-purple:var(--text); --ct-red:var(--text);
   --pad:12px;
   --fz:1.1;
   --ff:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;
@@ -240,10 +241,16 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 
 /* card colors (derived from the palette) */
 [data-color="gray"]{--cc:var(--surface)}
-[data-color="green"]{--cc:color-mix(in srgb,var(--green) 15%,var(--bg))}
-[data-color="blue"]{--cc:var(--accent-soft)}
-[data-color="purple"]{--cc:color-mix(in srgb,var(--secret) 15%,var(--bg))}
-[data-color="red"]{--cc:color-mix(in srgb,var(--danger) 14%,var(--bg))}
+[data-color="green"]{--cc:var(--cc-green,color-mix(in srgb,var(--green) 15%,var(--bg)))}
+[data-color="blue"]{--cc:var(--cc-blue,var(--accent-soft))}
+[data-color="purple"]{--cc:var(--cc-purple,color-mix(in srgb,var(--secret) 15%,var(--bg)))}
+[data-color="red"]{--cc:var(--cc-red,color-mix(in srgb,var(--danger) 14%,var(--bg)))}
+[data-color="gray"]{--ct:var(--ct-gray)}
+[data-color="green"]{--ct:var(--ct-green)}
+[data-color="blue"]{--ct:var(--ct-blue)}
+[data-color="purple"]{--ct:var(--ct-purple)}
+[data-color="red"]{--ct:var(--ct-red)}
+.card[data-color],.dlg[data-color]{--text:var(--ct);--sub:color-mix(in srgb,var(--text) 74%,var(--cc));--faint:color-mix(in srgb,var(--text) 62%,var(--cc));color:var(--text)}
 .card[data-color]{background:var(--cc);border-color:var(--cc);--chip:color-mix(in srgb,var(--text) 6%,transparent)}
 .card[data-color]:hover{border-color:var(--sub)}
 .card.sel[data-color]{border-color:var(--accent)}
@@ -263,9 +270,9 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 .tag[data-tc]::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--tc);vertical-align:1px}
 .tag[data-tc="gray"]{--tc:var(--faint)}
 .tag[data-tc="green"]{--tc:var(--green)}
-.tag[data-tc="blue"]{--tc:var(--accent)}
-.tag[data-tc="purple"]{--tc:var(--secret)}
-.tag[data-tc="red"]{--tc:var(--danger)}
+.tag[data-tc="blue"]{--tc:var(--blue,var(--accent))}
+.tag[data-tc="purple"]{--tc:var(--purple,var(--secret))}
+.tag[data-tc="red"]{--tc:var(--red,var(--danger))}
 
 /* theme thumbnails */
 .tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
