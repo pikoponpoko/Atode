@@ -690,6 +690,28 @@ async function applyPatch() {
   } catch {}
   try { await fetch('https://api.dropboxapi.com/2/files/delete_v2', { method: 'POST', headers: { Authorization: 'Bearer ' + (await token()), 'Content-Type': 'application/json' }, body: JSON.stringify({ path: DBX_PATCH }) }); } catch {}
 }
+// iPhoneのショートカットなどが Dropbox に追記した受信箱（1行1件、URLエンコード可）を取り込んで消す
+const DBX_INBOX = '/atode-inbox.txt';
+const INBOX_PATH = '/アプリ/Atode' + DBX_INBOX;
+async function applyInbox() {
+  let f; try { f = await dbxDownload(DBX_INBOX); } catch { return; }
+  if (!f) return;
+  const lines = f.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const now = Date.now(); let n = 0;
+  lines.forEach((line, i) => {
+    let raw = line; try { raw = decodeURIComponent(line); } catch {}
+    const id = 'in-' + now.toString(36) + '-' + i;
+    const v = parseInput(raw.trim());
+    if (isEmpty(v)) return;
+    const t = now - (lines.length - i);
+    items.push({ id, createdAt: t, updatedAt: t, ...v }); n++;
+  });
+  try {
+    const r = await fetch('https://api.dropboxapi.com/2/files/delete_v2', { method: 'POST', headers: { Authorization: 'Bearer ' + (await token()), 'Content-Type': 'application/json' }, body: JSON.stringify({ path: DBX_INBOX, parent_rev: f.rev || undefined }) });
+    if (!r.ok) { items.splice(items.length - n, n); return; }
+  } catch { items.splice(items.length - n, n); return; }
+  if (n) toast(n + '件を受け取りました');
+}
 let syncing = false, syncAgain = false, syncT;
 function scheduleSync() { clearTimeout(syncT); syncT = setTimeout(sync, 1200); }
 function setSync(state, msg = '') {
@@ -713,7 +735,7 @@ async function sync() {
       for (const x of [...(rd.items || []), ...items]) { const y = m.get(x.id); if (!y || (x.updatedAt || 0) > (y.updatedAt || 0)) m.set(x.id, x); }
       items = [...m.values()];
       if (rd.tagColors && (rd.tagColors.at || 0) > (tagc.at || 0)) { tagc = rd.tagColors; save(LS.tagc, tagc); }
-      if (attempt === 0) await applyPatch();
+      if (attempt === 0) { await applyPatch(); await applyInbox(); }
       save(LS.items, items);
       const out = canonicalJson();
       if (!remote || out !== remote.text) {
@@ -741,7 +763,8 @@ function openSettings() {
   $('#sConnect').textContent = connected() ? '切断' : '接続';
   const bm = `javascript:(()=>{const s=String(getSelection());window.open('${base()}?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)+(s?'&text='+encodeURIComponent(s):''),'atode','width=420,height=360')})()`;
   $('#sBookmarklet').href = bm;
-  $('#sShortcut').value = base() + '?text=';
+  $('#sShortcut').value = INBOX_PATH;
+  $('#sInstall').parentElement.hidden = !installEvt;
   lockLabel(); updateLockBtn(); renderDisplay(); renderTheme();
   renderSettingsStatus();
   $('#dlgSettings').showModal();
@@ -761,6 +784,10 @@ $('#sConnect').onclick = () => {
   connect();
 };
 $('#sBookmarklet').onclick = (e) => { e.preventDefault(); toast('ブックマークバーへドラッグしてください'); };
+let installEvt = null;
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; $('#sInstall').parentElement.hidden = false; });
+addEventListener('appinstalled', () => { installEvt = null; $('#sInstall').parentElement.hidden = true; });
+$('#sInstall').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $('#sInstall').parentElement.hidden = true; };
 $('#sShortcutCopy').onclick = () => copyText($('#sShortcut').value);
 $('#sVault').onclick = async () => {
   if (hasVault()) {
