@@ -70,11 +70,13 @@
     </div>
     <div class="urlrow"><input id="eUrl" type="url" placeholder="URL"><a id="eOpen" class="ib" target="_blank" rel="noopener noreferrer" title="開く"><svg><use href="#i-ext"/></svg></a></div>
     <textarea id="eText" rows="8" placeholder="本文"></textarea>
+    <div id="eList" class="elist" hidden></div>
     <input id="eTags" placeholder="#タグ">
     <div class="df">
       <button type="button" id="eDel" class="ib danger" title="削除"><svg><use href="#i-trash"/></svg></button>
       <button type="button" id="eArc" class="ib" title="アーカイブ"><svg><use href="#i-archive"/></svg></button>
       <button type="button" id="ePin" class="ib" title="ピン留め"><svg><use href="#i-pin"/></svg></button>
+      <button type="button" id="eChk" class="ib" title="チェックボックス"><svg><use href="#i-checklist"/></svg></button>
       <button type="button" id="eColor" class="ib" title="色"><svg><use href="#i-palette"/></svg></button>
       <button type="button" id="eSec" class="ib" title="鍵をかける"><svg><use href="#i-unlock"/></svg></button>
       <button type="button" id="eCopy" class="ib" title="Markdownでコピー"><svg><use href="#i-copy"/></svg></button>
@@ -137,6 +139,7 @@
 <svg class="sprite" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9"/></symbol>
+    <symbol id="i-checklist" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="6" height="6" rx="1.5"/><path d="m5 7.6 1.3 1.3 2.2-2.4M13 7.5h8M3.5 14.5h6v6h-6zM13 17.5h8"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
     <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.78A6 6 0 0 0 4.5 13 3 3 0 0 0 6 19z"/></symbol>
     <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M3 3l18 18M9 5.3A6 6 0 0 1 16.1 10.2 4.5 4.5 0 0 1 21 14.6M17.5 19H6a3 3 0 0 1-1.5-6 6 6 0 0 1 1.7-3.6"/></symbol>
