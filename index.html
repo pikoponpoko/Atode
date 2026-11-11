@@ -26,6 +26,15 @@
   <button id="btnCopyAll" class="ib" title="表示中をMarkdownでコピー"><svg><use href="#i-copy"/></svg></button>
   <button id="btnSettings" class="ib" title="設定"><svg><use href="#i-settings"/></svg></button>
 </header>
+<div id="selBar" class="selbar" hidden>
+  <button id="selClear" class="ib" title="選択を解除"><svg><use href="#i-x"/></svg></button>
+  <span id="selCount"></span>
+  <span class="grow"></span>
+  <button id="selPin" class="ib" title="ピン留め"><svg><use href="#i-pin"/></svg></button>
+  <button id="selCopy" class="ib" title="Markdownでコピー"><svg><use href="#i-copy"/></svg></button>
+  <button id="selArc" class="ib" title="アーカイブ"><svg><use href="#i-archive"/></svg></button>
+  <button id="selDel" class="ib danger" title="削除"><svg><use href="#i-trash"/></svg></button>
+</div>
 
 <form id="composer" class="composer" autocomplete="off">
   <div class="cbox">
@@ -114,6 +123,7 @@
 
 <svg class="sprite" xmlns="http://www.w3.org/2000/svg">
   <defs>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
     <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.78A6 6 0 0 0 4.5 13 3 3 0 0 0 6 19z"/></symbol>
     <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M3 3l18 18M9 5.3A6 6 0 0 1 16.1 10.2 4.5 4.5 0 0 1 21 14.6M17.5 19H6a3 3 0 0 1-1.5-6 6 6 0 0 1 1.7-3.6"/></symbol>

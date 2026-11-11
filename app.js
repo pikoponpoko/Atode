@@ -17,6 +17,7 @@ let meta = load(LS.meta, {});
 let vaultKey = null;
 const plain = new Map(); // 鍵付きクリップの復号結果（メモリ内のみ）
 const ui = { kind: '', tag: '', q: '', archive: false, secretNew: false };
+const sel = new Set();
 
 /* ---------- utils ---------- */
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -191,6 +192,8 @@ function render() {
   renderTags();
   const list = visible();
   $('#count').textContent = list.length;
+  for (const id of [...sel]) if (!items.some((x) => x.id === id && !x.deleted)) sel.delete(id);
+  syncSelBar();
   const box = $('#list'); box.textContent = '';
   if (!list.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = items.some((i) => !i.deleted) ? '該当なし' : 'クリップはまだありません'; box.append(e); return; }
   const pinned = list.filter((x) => x.it.pinned), rest = list.filter((x) => !x.it.pinned);
@@ -230,9 +233,42 @@ function card(it, v) {
   bar.append(iconBtn('trash', '削除', () => removeWithUndo(it.id), 'danger'));
   if (!v) bar.querySelectorAll('button:not(.danger)').forEach((b) => (b.disabled = true));
   el.append(bar);
-  el.onclick = async () => { if (!v && !(await unlock())) return; openEdit(it.id); };
+  const ck = document.createElement('button'); ck.type = 'button'; ck.className = 'ck'; ck.title = '選択'; ck.append(svg('check'));
+  ck.onclick = (e) => { e.stopPropagation(); toggleSel(it.id); };
+  el.prepend(ck);
+  if (sel.has(it.id)) el.classList.add('sel');
+  let lp, lpFired = false;
+  el.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') return; lpFired = false; lp = setTimeout(() => { lpFired = true; navigator.vibrate?.(10); toggleSel(it.id); }, 450); });
+  ['pointerup', 'pointercancel', 'pointermove'].forEach((t) => el.addEventListener(t, (e) => { if (t !== 'pointermove' || Math.abs(e.movementY) > 3) clearTimeout(lp); }));
+  el.addEventListener('contextmenu', (e) => { if (lpFired) e.preventDefault(); });
+  el.onclick = async (e) => {
+    if (lpFired) { lpFired = false; return; }
+    if (sel.size || e.shiftKey || e.ctrlKey || e.metaKey) { toggleSel(it.id); return; }
+    if (!v && !(await unlock())) return; openEdit(it.id);
+  };
   return el;
 }
+function toggleSel(id) { sel.has(id) ? sel.delete(id) : sel.add(id); render(); }
+function syncSelBar() {
+  const on = sel.size > 0;
+  document.body.classList.toggle('selecting', on);
+  $('#selBar').hidden = !on; $('#selCount').textContent = sel.size + '件を選択';
+}
+const selItems = () => items.filter((x) => sel.has(x.id) && !x.deleted);
+async function bulk(fields) { for (const it of selItems()) { const v = view(it); if (v) await upsert({ ...it, ...fields }, { title: v.title, text: v.text, url: v.url, tags: v.tags, kind: v.kind }); } sel.clear(); render(); }
+$('#selClear').onclick = () => { sel.clear(); render(); };
+$('#selPin').onclick = () => bulk({ pinned: !selItems().every((x) => x.pinned) });
+$('#selArc').onclick = () => bulk({ archived: !ui.archive });
+$('#selCopy').onclick = () => { const l = selItems().map((it) => ({ it, v: view(it) })).filter((x) => x.v); copyText(listMd(l)); };
+$('#selDel').onclick = () => {
+  const prev = selItems().map((x) => ({ ...x })); const pp = new Map(prev.map((x) => [x.id, plain.get(x.id)]));
+  for (const x of prev) remove(x.id); sel.clear(); render();
+  toast(prev.length + '件を削除しました', '元に戻す', () => {
+    for (const x of prev) { const i = items.findIndex((y) => y.id === x.id); items[i] = { ...x, updatedAt: Date.now() + 1 }; if (pp.get(x.id)) plain.set(x.id, pp.get(x.id)); }
+    persist(); render();
+  });
+};
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sel.size && !document.querySelector('dialog[open]')) { sel.clear(); render(); } });
 function removeWithUndo(id) {
   const prev = items.find((x) => x.id === id); if (!prev) return;
   const keepPlain = plain.get(id);
