@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com https://api.microlink.io; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0f13" media="(prefers-color-scheme: dark)">
@@ -31,6 +31,7 @@
   <span id="selCount"></span>
   <span class="grow"></span>
   <button id="selPin" class="ib" title="ピン留め"><svg><use href="#i-pin"/></svg></button>
+  <button id="selColor" class="ib" title="色"><svg><use href="#i-palette"/></svg></button>
   <button id="selCopy" class="ib" title="Markdownでコピー"><svg><use href="#i-copy"/></svg></button>
   <button id="selArc" class="ib" title="アーカイブ"><svg><use href="#i-archive"/></svg></button>
   <button id="selDel" class="ib danger" title="削除"><svg><use href="#i-trash"/></svg></button>
@@ -53,6 +54,7 @@
     <button data-k="secret" title="鍵付き"><svg><use href="#i-lock"/></svg></button>
   </div>
   <button id="btnArchive" class="ib sm" title="アーカイブを表示" aria-pressed="false"><svg><use href="#i-archive"/></svg></button>
+  <button id="btnSort" class="ib sm" title="新しい順"><svg><use href="#i-sort-new"/></svg></button>
   <div class="tags" id="tags"></div>
   <span class="count" id="count"></span>
 </nav>
@@ -73,6 +75,7 @@
       <button type="button" id="eDel" class="ib danger" title="削除"><svg><use href="#i-trash"/></svg></button>
       <button type="button" id="eArc" class="ib" title="アーカイブ"><svg><use href="#i-archive"/></svg></button>
       <button type="button" id="ePin" class="ib" title="ピン留め"><svg><use href="#i-pin"/></svg></button>
+      <button type="button" id="eColor" class="ib" title="色"><svg><use href="#i-palette"/></svg></button>
       <button type="button" id="eSec" class="ib" title="鍵をかける"><svg><use href="#i-unlock"/></svg></button>
       <button type="button" id="eCopy" class="ib" title="Markdownでコピー"><svg><use href="#i-copy"/></svg></button>
       <span class="grow"></span>
@@ -120,6 +123,7 @@
 </dialog>
 
 <div id="toast" class="toast" hidden></div>
+<div id="ctx" class="ctx" hidden></div>
 
 <svg class="sprite" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -142,6 +146,9 @@
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-sort-new" viewBox="0 0 24 24"><path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M14 6h7M14 11h5M14 16h3"/></symbol>
+    <symbol id="i-sort-old" viewBox="0 0 24 24"><path d="M7 20V4M3.5 7.5 7 4l3.5 3.5M14 6h3M14 11h5M14 16h7"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.4-1.3-1.8-1.3-3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol>
     <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
   </defs>
 </svg>

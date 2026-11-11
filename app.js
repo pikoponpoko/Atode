@@ -5,7 +5,7 @@ const DBX_MD = '/atode.md';
 const PBKDF2_ITER = 600000;
 
 const $ = (s) => document.querySelector(s);
-const LS = { items: 'atode.items', meta: 'atode.meta', tok: 'atode.dbx', key: 'atode.appkey', rev: 'atode.rev', pkce: 'atode.pkce', lock: 'atode.autolock', last: 'atode.lastsync' };
+const LS = { items: 'atode.items', meta: 'atode.meta', tok: 'atode.dbx', key: 'atode.appkey', rev: 'atode.rev', sort: 'atode.sort', og: 'atode.og', pkce: 'atode.pkce', lock: 'atode.autolock', last: 'atode.lastsync' };
 const KIND = { link: 'リンク', word: 'ワード', note: 'メモ' };
 const SENSITIVE = /パスワード|password|passwd|\bpass\s*[:：]|\bPW\b|pw\s*[:：]|暗証|パス\s*[:：]|ログイン/i;
 
@@ -16,7 +16,8 @@ let items = load(LS.items, []);
 let meta = load(LS.meta, {});
 let vaultKey = null;
 const plain = new Map(); // 鍵付きクリップの復号結果（メモリ内のみ）
-const ui = { kind: '', tag: '', q: '', archive: false, secretNew: false };
+const ui = { kind: '', tag: '', q: '', archive: false, secretNew: false, sort: load(LS.sort, 'new') };
+const COLORS = [['', 'なし'], ['gray', 'グレー'], ['blue', '青'], ['purple', '紫'], ['red', '赤']];
 const sel = new Set();
 
 /* ---------- utils ---------- */
@@ -113,6 +114,7 @@ function persist() { save(LS.items, items); scheduleSync(); }
 async function upsert(it, v) {
   const now = Date.now();
   const base = { id: it.id, createdAt: it.createdAt || now, updatedAt: Math.max(now, (it.updatedAt || 0) + 1), pinned: !!it.pinned, archived: !!it.archived };
+  if (it.color) base.color = it.color;
   let next;
   if (it.secret) {
     if (!vaultKey) throw new Error('locked');
@@ -133,6 +135,12 @@ function remove(id) {
   items[i] = { id, deleted: true, updatedAt: Math.max(Date.now(), (items[i].updatedAt || 0) + 1) };
   plain.delete(id);
   persist();
+}
+const isEmpty = (v) => !!v && !(v.title || '').trim() && !(v.text || '').trim() && !(v.url || '').trim();
+function purgeEmpty() {
+  let n = 0;
+  for (const it of items) if (!it.deleted && !it.secret && isEmpty(it)) { remove(it.id); n++; }
+  return n;
 }
 async function addClip(v, secret = false) {
   if (secret && !(await unlock())) return null;
@@ -167,9 +175,10 @@ function canonicalJson() {
 
 /* ---------- render ---------- */
 const sorter = (a, b) => (!!b.pinned - !!a.pinned) || (b.createdAt || 0) - (a.createdAt || 0);
+const viewSorter = (a, b) => (!!b.pinned - !!a.pinned) || ((b.createdAt || 0) - (a.createdAt || 0)) * (ui.sort === 'old' ? -1 : 1);
 function visible() {
   const q = ui.q.trim().toLowerCase();
-  return items.filter((it) => !it.deleted && !!it.archived === ui.archive).sort(sorter).map((it) => ({ it, v: view(it) })).filter(({ it, v }) => {
+  return items.filter((it) => !it.deleted && !!it.archived === ui.archive).sort(viewSorter).map((it) => ({ it, v: view(it) })).filter(({ it, v }) => {
     if (ui.kind === 'secret') { if (!it.secret) return false; }
     else if (ui.kind && (!v || v.kind !== ui.kind)) return false;
     if (ui.tag && (!v || !(v.tags || []).includes(ui.tag))) return false;
@@ -200,13 +209,128 @@ function render() {
   const section = (label, arr) => {
     if (!arr.length) return;
     if (label) { const h = document.createElement('div'); h.className = 'gh'; h.textContent = label; box.append(h); }
-    const g = document.createElement('div'); g.className = 'grid';
-    for (const { it, v } of arr) g.append(card(it, v));
-    box.append(g);
+    box.append(masonry(arr.map(({ it, v }) => card(it, v)), box));
   };
   section(pinned.length ? 'ピン留め' : '', pinned);
   section(pinned.length ? 'その他' : '', rest);
 }
+// 左上から横方向に作成日順で並べ、各カードは一番短い列へ置く
+function layout() {
+  const w = innerWidth;
+  if (w <= 520) return { min: 0, gap: 8, n: 2 };
+  return w >= 960 ? { min: 248, gap: 12 } : { min: 236, gap: 10 };
+}
+let colCount = 0;
+function masonry(cards, box) {
+  const L = layout(); const cs = getComputedStyle(box);
+  const W = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const n = L.n || Math.max(1, Math.floor((W + L.gap) / (L.min + L.gap)));
+  colCount = n;
+  const g = document.createElement('div'); g.className = 'grid';
+  const cols = Array.from({ length: n }, () => { const c = document.createElement('div'); c.className = 'col'; g.append(c); return c; });
+  box.append(g);
+  cards.forEach((c) => cols[0].append(c));
+  const hs = cards.map((c) => c.offsetHeight);
+  const sum = new Array(n).fill(0);
+  cards.forEach((c, i) => { let k = 0; for (let j = 1; j < n; j++) if (sum[j] < sum[k] - 1) k = j; cols[k].append(c); sum[k] += hs[i] + L.gap; });
+  return g;
+}
+let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { const L = layout(); const box = $('#list'); const W = box.clientWidth - 2 * parseFloat(getComputedStyle(box).paddingLeft); const n = L.n || Math.max(1, Math.floor((W + L.gap) / (L.min + L.gap))); if (n !== colCount) render(); }, 120); });
+
+/* ---------- checklist ---------- */
+const CB_RE = /^(\s*)[-*]\s\[( |x|X)\]\s?(.*)$/;
+function bodyEl(it, v) {
+  const lines = v.text.split('\n');
+  if (!lines.some((l) => CB_RE.test(l))) { const x = document.createElement('p'); x.textContent = v.text; return x; }
+  const body = document.createElement('div'); body.className = 'body';
+  let buf = [];
+  const flush = () => { if (!buf.length) return; const x = document.createElement('p'); x.textContent = buf.join('\n'); body.append(x); buf = []; };
+  lines.forEach((l, i) => {
+    const m = l.match(CB_RE); if (!m) { buf.push(l); return; }
+    flush();
+    const on = m[2] !== ' ';
+    const row = document.createElement('div'); row.className = 'cbr' + (on ? ' on' : ''); row.style.paddingLeft = Math.min(m[1].length, 8) * 6 + 'px';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cb'; b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', on); b.append(svg('check'));
+    const t = document.createElement('span'); t.textContent = m[3];
+    row.append(b, t);
+    b.onclick = (e) => { e.stopPropagation(); if (sel.size) return toggleSel(it.id); toggleCheck(it, i); };
+    body.append(row);
+  });
+  flush();
+  return body;
+}
+async function toggleCheck(it, i) {
+  const v = view(it); if (!v) return;
+  const lines = v.text.split('\n'); const m = lines[i].match(CB_RE); if (!m) return;
+  lines[i] = lines[i].replace(/\[( |x|X)\]/, m[2] === ' ' ? '[x]' : '[ ]');
+  const cur = items.find((x) => x.id === it.id);
+  await upsert(cur, { title: v.title, text: lines.join('\n'), url: v.url, tags: v.tags, kind: v.kind });
+  render();
+}
+
+/* ---------- link preview ---------- */
+const og = load(LS.og, {});
+const ogQ = []; let ogBusy = false, ogStop = false, ogRT;
+const ytId = (u) => { try { const x = new URL(u); if (/(^|\.)youtu\.be$/.test(x.hostname)) return x.pathname.slice(1); if (/(^|\.)youtube\.com$/.test(x.hostname)) return x.searchParams.get('v') || (x.pathname.match(/^\/(shorts|live|embed)\/([^/?]+)/) || [])[2]; } catch {} return null; };
+function ogFor(u) { const o = og[u]; if (o && !o.fail) return o; const y = ytId(u); return y ? { i: `https://i.ytimg.com/vi/${y}/mqdefault.jpg` } : null; }
+function wantOg(u) { const o = og[u]; if (o && (!o.fail || Date.now() - o.fail < 7 * 864e5)) return; if (!ogQ.includes(u)) ogQ.push(u); pumpOg(); }
+async function pumpOg() {
+  if (ogBusy || ogStop || !navigator.onLine) return;
+  const u = ogQ.shift(); if (!u) return;
+  ogBusy = true;
+  try {
+    const r = await fetch('https://api.microlink.io/?url=' + encodeURIComponent(u));
+    if (r.status === 429) { ogStop = true; return; }
+    const j = await r.json();
+    const d = j.status === 'success' ? j.data || {} : null;
+    og[u] = d && (d.title || d.image) ? { t: d.title || '', d: d.description || '', i: d.image?.url || '', ic: d.logo?.url || '' } : { fail: Date.now() };
+    save(LS.og, og);
+    clearTimeout(ogRT); ogRT = setTimeout(() => { if (!document.querySelector('dialog[open]')) render(); }, 300);
+  } catch { og[u] = { fail: Date.now() }; save(LS.og, og); }
+  finally { ogBusy = false; setTimeout(pumpOg, 400); }
+}
+const ogIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { ogIO.unobserve(e.target); wantOg(e.target._url); } }), { rootMargin: '300px' }) : null;
+function linkEl(it, v) {
+  const a = document.createElement('a'); a.href = v.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.onclick = (e) => { if (sel.size) { e.preventDefault(); return; } e.stopPropagation(); };
+  const o = ogFor(v.url);
+  const hostTxt = v.title || v.text || o?.t ? host(v.url) : v.url.replace(/^https?:\/\/(www\.)?/, '');
+  if (!o) { a.className = 'lk'; a.append(svg('link')); const h = document.createElement('span'); h.textContent = hostTxt; a.append(h); return a; }
+  a.className = 'lp';
+  if (o.i) { const im = document.createElement('img'); im.src = o.i; im.alt = ''; im.loading = 'lazy'; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); a.append(im); }
+  const tx = document.createElement('div'); tx.className = 'lpt';
+  const head = o.t && o.t !== v.title ? o.t : o.d;
+  if (head) { const b = document.createElement('b'); b.textContent = head; tx.append(b); }
+  const h = document.createElement('span'); h.className = 'lph';
+  if (o.ic) { const ic = document.createElement('img'); ic.src = o.ic; ic.alt = ''; ic.referrerPolicy = 'no-referrer'; ic.onerror = () => ic.remove(); h.append(ic); } else h.append(svg('link'));
+  const hs = document.createElement('span'); hs.textContent = host(v.url); h.append(hs); tx.append(h);
+  a.append(tx);
+  return a;
+}
+
+/* ---------- color menu ---------- */
+let ctxDone = null;
+function openColorMenu(x, y, cur, pick) {
+  const m = $('#ctx'); m.textContent = '';
+  for (const [c, name] of COLORS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'sw' + (c === cur ? ' on' : ''); b.dataset.color = c; b.title = name;
+    b.onclick = (e) => { e.stopPropagation(); closeCtx(); pick(c); };
+    m.append(b);
+  }
+  m.hidden = false;
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(6, Math.min(x, innerWidth - r.width - 6)) + 'px';
+  m.style.top = Math.max(6, Math.min(y, innerHeight - r.height - 6)) + 'px';
+  ctxDone = pick;
+}
+function closeCtx() { $('#ctx').hidden = true; ctxDone = null; }
+addEventListener('pointerdown', (e) => { if (!$('#ctx').hidden && !e.target.closest('#ctx')) closeCtx(); }, true);
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#ctx').hidden) { e.stopPropagation(); closeCtx(); } }, true);
+addEventListener('scroll', closeCtx, true); addEventListener('blur', closeCtx);
+async function setColor(list, c) {
+  for (const it of list) { const v = view(it); if (v) await upsert({ ...it, color: c }, { title: v.title, text: v.text, url: v.url, tags: v.tags, kind: v.kind }); }
+  render();
+}
+
 function iconBtn(icon, title, fn, cls = '') {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'ib sm ' + cls; b.title = title; b.append(svg(icon));
   b.onclick = (e) => { e.stopPropagation(); fn(); }; return b;
@@ -214,14 +338,16 @@ function iconBtn(icon, title, fn, cls = '') {
 async function patch(it, fields) { const v = view(it); if (!v) return; await upsert({ ...it, ...fields }, { title: v.title, text: v.text, url: v.url, tags: v.tags, kind: v.kind }); render(); }
 function card(it, v) {
   const el = document.createElement('article'); el.className = 'card' + (it.secret ? ' secret' : '') + (v ? ' ' + v.kind : '');
+  if (it.color) el.dataset.color = it.color;
   if (!v) {
     const t = document.createElement('div'); t.className = 'locked'; t.append(svg('lock')); t.append('鍵付き'); el.append(t);
   } else {
     if (v.title) { const t = document.createElement('h4'); t.textContent = v.title; el.append(t); }
-    if (v.text) { const x = document.createElement('p'); x.textContent = v.text; el.append(x); }
+    if (v.text) el.append(bodyEl(it, v));
     if (v.url) {
-      const a = document.createElement('a'); a.className = 'lk'; a.href = v.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.onclick = (e) => e.stopPropagation();
-      a.append(svg('link')); const h = document.createElement('span'); h.textContent = v.title || v.text ? host(v.url) : v.url.replace(/^https?:\/\/(www\.)?/, ''); a.append(h); el.append(a);
+      el.append(linkEl(it, v));
+      el._url = v.url; el._it = it;
+      if (!it.secret && !og[v.url] && ogIO) ogIO.observe(el);
     }
     if (v.tags?.length) { const tg = document.createElement('div'); tg.className = 'tgs'; for (const t of v.tags) { const s = document.createElement('span'); s.textContent = t; tg.append(s); } el.append(tg); }
   }
@@ -240,7 +366,11 @@ function card(it, v) {
   let lp, lpFired = false;
   el.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') return; lpFired = false; lp = setTimeout(() => { lpFired = true; navigator.vibrate?.(10); toggleSel(it.id); }, 450); });
   ['pointerup', 'pointercancel', 'pointermove'].forEach((t) => el.addEventListener(t, (e) => { if (t !== 'pointermove' || Math.abs(e.movementY) > 3) clearTimeout(lp); }));
-  el.addEventListener('contextmenu', (e) => { if (lpFired) e.preventDefault(); });
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); if (lpFired) return;
+    const list = sel.has(it.id) ? selItems() : [it];
+    openColorMenu(e.clientX, e.clientY, list.length === 1 ? it.color || '' : null, (c) => setColor(list, c));
+  });
   el.onclick = async (e) => {
     if (lpFired) { lpFired = false; return; }
     if (sel.size || e.shiftKey || e.ctrlKey || e.metaKey) { toggleSel(it.id); return; }
@@ -259,6 +389,7 @@ async function bulk(fields) { for (const it of selItems()) { const v = view(it);
 $('#selClear').onclick = () => { sel.clear(); render(); };
 $('#selPin').onclick = () => bulk({ pinned: !selItems().every((x) => x.pinned) });
 $('#selArc').onclick = () => bulk({ archived: !ui.archive });
+$('#selColor').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); const l = selItems(); openColorMenu(r.left, r.bottom + 4, null, async (c) => { await setColor(l, c); }); };
 $('#selCopy').onclick = () => { const l = selItems().map((it) => ({ it, v: view(it) })).filter((x) => x.v); copyText(listMd(l)); };
 $('#selDel').onclick = () => {
   const prev = selItems().map((x) => ({ ...x })); const pp = new Map(prev.map((x) => [x.id, plain.get(x.id)]));
@@ -269,11 +400,11 @@ $('#selDel').onclick = () => {
   });
 };
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sel.size && !document.querySelector('dialog[open]')) { sel.clear(); render(); } });
-function removeWithUndo(id) {
+function removeWithUndo(id, msg = '削除しました') {
   const prev = items.find((x) => x.id === id); if (!prev) return;
   const keepPlain = plain.get(id);
   remove(id); render();
-  toast('削除しました', '元に戻す', () => {
+  toast(msg, '元に戻す', () => {
     const i = items.findIndex((x) => x.id === id);
     items[i] = { ...prev, updatedAt: Date.now() + 1 };
     if (keepPlain) plain.set(id, keepPlain);
@@ -284,7 +415,7 @@ function removeWithUndo(id) {
 let editing = null;
 function openEdit(id) {
   const it = items.find((x) => x.id === id); const v = view(it); if (!v) return;
-  editing = { id, secret: !!it.secret, pinned: !!it.pinned, archived: !!it.archived };
+  editing = { id, secret: !!it.secret, pinned: !!it.pinned, archived: !!it.archived, color: it.color || '' };
   $('#eTitle').value = v.title || ''; $('#eUrl').value = v.url || ''; $('#eText').value = v.text || '';
   $('#eTags').value = (v.tags || []).map((t) => '#' + t).join(' ');
   $('#dlgEdit').returnValue = '';
@@ -297,6 +428,7 @@ function syncEditBtns() {
   $('#ePin').setAttribute('aria-pressed', editing.pinned); $('#eArc').setAttribute('aria-pressed', editing.archived);
   setIcon($('#eSec'), editing.secret ? 'lock' : 'unlock'); $('#eSec').classList.toggle('secret-on', editing.secret);
   $('#eSec').title = editing.secret ? '鍵を外す' : '鍵をかける';
+  if (editing.color) $('#dlgEdit').dataset.color = editing.color; else delete $('#dlgEdit').dataset.color;
   $('#eArc').title = editing.archived ? 'アーカイブから戻す' : 'アーカイブ';
   $('#eKind').textContent = ''; $('#eKind').append(svg(kindOf(editVals()) === 'link' ? 'link' : kindOf(editVals()) === 'word' ? 'word' : 'note'));
 }
@@ -309,12 +441,15 @@ $('#eUrl').oninput = syncEditBtns; $('#eTitle').oninput = syncEditBtns; $('#eTex
 $('#ePin').onclick = () => { editing.pinned = !editing.pinned; syncEditBtns(); };
 $('#eArc').onclick = () => { editing.archived = !editing.archived; syncEditBtns(); };
 $('#eSec').onclick = async () => { if (!editing.secret && !(await unlock())) return; editing.secret = !editing.secret; syncEditBtns(); };
+$('#eColor').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); openColorMenu(r.left, r.top - 44, editing.color, (c) => { editing.color = c; syncEditBtns(); }); };
 $('#eCopy').onclick = () => copyText(itemMd(editVals()));
 $('#eDel').onclick = () => { if (!confirm('削除しますか？')) return; remove(editing.id); $('#dlgEdit').close(); render(); };
 $('#dlgEdit').addEventListener('close', async () => {
   if ($('#dlgEdit').returnValue !== 'save' || !editing) { editing = null; return; }
   const it = items.find((x) => x.id === editing.id);
-  await upsert({ ...it, secret: editing.secret, pinned: editing.pinned, archived: editing.archived }, editVals());
+  const vals = editVals();
+  if (isEmpty(vals)) { editing = null; $('#dlgEdit').returnValue = ''; removeWithUndo(it.id, '空のカードを削除しました'); return; }
+  await upsert({ ...it, secret: editing.secret, pinned: editing.pinned, archived: editing.archived, color: editing.color }, vals);
   editing = null; $('#dlgEdit').returnValue = '';
   updateLockBtn(); render();
 });
@@ -360,6 +495,8 @@ $('#kinds').onclick = async (e) => {
   if (b.dataset.k === 'secret' && !vaultKey && hasVault()) await unlock();
   ui.kind = b.dataset.k; document.querySelectorAll('#kinds button').forEach((x) => x.classList.toggle('on', x === b)); render();
 };
+function syncSort() { const b = $('#btnSort'); setIcon(b, ui.sort === 'old' ? 'sort-old' : 'sort-new'); b.title = ui.sort === 'old' ? '古い順' : '新しい順'; }
+$('#btnSort').onclick = () => { ui.sort = ui.sort === 'old' ? 'new' : 'old'; save(LS.sort, ui.sort); syncSort(); render(); };
 $('#btnArchive').onclick = () => { ui.archive = !ui.archive; $('#btnArchive').setAttribute('aria-pressed', ui.archive); render(); };
 let qT; $('#q').oninput = (e) => { clearTimeout(qT); qT = setTimeout(() => { ui.q = e.target.value; render(); }, 120); };
 $('#btnCopyAll').onclick = () => { const l = visible().filter((x) => x.v); if (!l.length) return toast('コピーする項目がありません'); copyText(listMd(l)); };
@@ -450,6 +587,7 @@ async function sync() {
       break;
     }
     await decryptAll();
+    if (purgeEmpty()) save(LS.items, items);
     save(LS.last, Date.now());
     render(); updateLockBtn(); setSync('ok');
   } catch (e) { setSync('err', e.message); }
@@ -515,6 +653,7 @@ function fromKeep(d) {
   const title = (d.title || '').trim() || (url && !text ? (links[0].title || '').trim() : '');
   const tags = (d.labels || []).map((l) => String(l.name || '').trim().replace(/\s+/g, '_')).filter(Boolean);
   const v = { title, text, url, tags }; v.kind = kindOf(v);
+  if (isEmpty(v)) return null;
   const created = Math.floor(Number(d.createdTimestampUsec) / 1000);
   return { id: 'keep-' + d.createdTimestampUsec, createdAt: created, updatedAt: Math.max(created, Math.floor(Number(d.userEditedTimestampUsec || 0) / 1000)), pinned: !!d.isPinned, archived: !!d.isArchived, v };
 }
@@ -576,7 +715,7 @@ async function handleParams() {
 
 /* ---------- boot ---------- */
 (async () => {
-  updateLockBtn(); syncSecretNew(); render(); grow();
+  purgeEmpty(); updateLockBtn(); syncSecretNew(); syncSort(); render(); grow();
   await handleParams();
   if (connected()) sync(); else setSync('off');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
