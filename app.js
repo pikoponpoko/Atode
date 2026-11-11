@@ -753,6 +753,7 @@ function renderSettingsStatus(state, msg) {
   const l = load(LS.last, 0); s.textContent = '接続済み' + (l ? ' · 最終同期 ' + fmtDate(l) : ''); s.className = 'msg';
 }
 $('#btnSettings').onclick = openSettings;
+document.addEventListener('keydown', (e) => { if (e.key !== 'F1') return; e.preventDefault(); const d = $('#dlgSettings'); if (d.open) d.close(); else if (!document.querySelector('dialog[open]')) openSettings(); });
 $('#sKey').onchange = (e) => localStorage.setItem(LS.key, e.target.value.trim());
 $('#sConnect').onclick = () => {
   if (connected()) { if (!confirm('Dropboxとの接続を解除しますか？')) return; localStorage.removeItem(LS.tok); setSync('off'); openSettings(); return; }
