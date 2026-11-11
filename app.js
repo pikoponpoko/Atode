@@ -289,10 +289,22 @@ function bodyEl(it, v) {
   if (rest) { const x = document.createElement('div'); x.className = 'more'; x.textContent = '+' + rest; body.append(x); }
   return body;
 }
+/* チェックした項目はチェックリストの塊の末尾へ、外した項目は未チェックの末尾へ移す */
+function reorderCheck(arr, i, on, isCb, isOn) {
+  let a = i, b = i;
+  while (a > 0 && isCb(arr[a - 1])) a--;
+  while (b < arr.length - 1 && isCb(arr[b + 1])) b++;
+  const [x] = arr.splice(i, 1); b--;
+  let to = b + 1;
+  if (!on) for (let k = a; k <= b; k++) if (isOn(arr[k])) { to = k; break; }
+  arr.splice(to, 0, x);
+  return to;
+}
 async function toggleCheck(it, i) {
   const v = view(it); if (!v) return;
   const lines = v.text.split('\n'); const m = lines[i].match(CB_RE); if (!m) return;
   lines[i] = lines[i].replace(/\[( |x|X)\]/, m[2] === ' ' ? '[x]' : '[ ]');
+  reorderCheck(lines, i, m[2] === ' ', (l) => CB_RE.test(l), (l) => /^\s*[-*]\s\[[xX]\]/.test(l));
   const cur = items.find((x) => x.id === it.id);
   await upsert(cur, { title: v.title, text: lines.join('\n'), url: v.url, tags: v.tags, kind: v.kind });
   render();
@@ -461,6 +473,9 @@ function openEdit(id) {
   $('#dlgEdit').returnValue = '';
   syncEditBtns();
   $('#dlgEdit').showModal();
+  document.activeElement?.blur();
+  if (!listMode) fit($('#eText'));
+  $('#dlgEdit').scrollTop = 0;
 }
 function syncEditBtns() {
   const u = $('#eUrl').value.trim(); const o = $('#eOpen');
@@ -468,7 +483,7 @@ function syncEditBtns() {
   $('#ePin').setAttribute('aria-pressed', editing.pinned); $('#eArc').setAttribute('aria-pressed', editing.archived);
   setIcon($('#eSec'), editing.secret ? 'lock' : 'unlock'); $('#eSec').classList.toggle('secret-on', editing.secret);
   $('#eSec').title = editing.secret ? '鍵を外す' : '鍵をかける';
-  if (editing.color) $('#dlgEdit').dataset.color = editing.color; else delete $('#dlgEdit').dataset.color;
+  const dc = cardColor({ color: editing.color }, editVals()); if (dc) $('#dlgEdit').dataset.color = dc; else delete $('#dlgEdit').dataset.color;
   $('#eArc').title = editing.archived ? 'アーカイブから戻す' : 'アーカイブ';
   $('#eKind').textContent = ''; $('#eKind').append(svg(kindOf(editVals()) === 'link' ? 'link' : kindOf(editVals()) === 'word' ? 'word' : 'note'));
 }
@@ -500,7 +515,13 @@ function erow(text, cb, on = false, ind = '') {
   if (cb) r.style.paddingLeft = Math.min(ind.length, 8) * 6 + 'px';
   if (cb) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'cb'; b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', on); b.append(svg('check'));
-    b.onclick = () => { const v = !r.classList.contains('on'); r.classList.toggle('on', v); b.setAttribute('aria-checked', v); serializeList(); };
+    b.onclick = () => {
+      const v = !r.classList.contains('on'); r.classList.toggle('on', v); b.setAttribute('aria-checked', v);
+      const rows = [...eList.querySelectorAll('.erow')], i = rows.indexOf(r);
+      const to = reorderCheck(rows, i, v, (x) => !x.classList.contains('plain'), (x) => x.classList.contains('on'));
+      const next = rows[to + 1]; if (next) next.before(r); else if (rows[to - 1]) rows[to - 1].after(r);
+      serializeList();
+    };
     r.append(b);
   }
   const t = document.createElement('textarea'); t.rows = 1; t.value = text; t.enterKeyHint = 'next';
@@ -533,13 +554,13 @@ function serializeList() {
 }
 $('#eChk').onclick = () => {
   const ta = $('#eText');
-  if (listMode) { ta.value = ta.value.split('\n').map((l) => { const m = l.match(CB_RE); return m ? m[1] + m[3] : l; }).join('\n'); setListMode(false); ta.focus(); return; }
+  if (listMode) { ta.value = ta.value.split('\n').map((l) => { const m = l.match(CB_RE); return m ? m[1] + m[3] : l; }).join('\n'); setListMode(false); fit(ta); ta.focus(); return; }
   const lines = ta.value.replace(/\s+$/, '').split('\n');
   ta.value = lines.map((l) => (CB_RE.test(l) ? l : l.trim() || lines.length === 1 ? '- [ ] ' + l.trim() : l)).join('\n');
   setListMode(true);
   const rs = eList.querySelectorAll('.erow'); const last = rs[rs.length - 1]; if (last) focusRow(last, last.querySelector('textarea').value.length);
 };
-$('#eUrl').oninput = syncEditBtns; $('#eTitle').oninput = syncEditBtns; $('#eText').oninput = syncEditBtns;
+$('#eTags').oninput = syncEditBtns; $('#eUrl').oninput = syncEditBtns; $('#eTitle').oninput = syncEditBtns; $('#eText').oninput = () => { fit($('#eText')); syncEditBtns(); };
 $('#ePin').onclick = () => { editing.pinned = !editing.pinned; syncEditBtns(); };
 $('#eArc').onclick = () => { editing.archived = !editing.archived; syncEditBtns(); };
 $('#eSec').onclick = async () => { if (!editing.secret && !(await unlock())) return; editing.secret = !editing.secret; syncEditBtns(); };
