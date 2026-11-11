@@ -2,7 +2,7 @@
   --bg:#ffffff; --surface:#f3f4f7; --hover:#eceef3; --line:#e5e7ec;
   --text:#0e1116; --sub:#5f6775; --faint:#6f7784;
   --accent:#3355ff; --accent-soft:#e6ebff; --on-accent:#ffffff;
-  --secret:#7c4dff; --danger:#e5484d;
+  --secret:#7c4dff; --danger:#e5484d; --green:#1f9d55;
   --pad:12px;
   --fz:1.1;
   --ff:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;
@@ -13,7 +13,7 @@
     --bg:#0d0f13; --surface:#161920; --hover:#1c2029; --line:#232731;
     --text:#eceef2; --sub:#9aa2b0; --faint:#808897;
     --accent:#6f8cff; --accent-soft:#1b2347; --on-accent:#0d0f13;
-    --secret:#a58bff; --danger:#ff6b6f;
+    --secret:#a58bff; --danger:#ff6b6f; --green:#4cc38a;
     color-scheme:dark;
   }
 }
@@ -21,7 +21,7 @@
   --bg:#0d0f13; --surface:#161920; --hover:#1c2029; --line:#232731;
   --text:#eceef2; --sub:#9aa2b0; --faint:#808897;
   --accent:#6f8cff; --accent-soft:#1b2347; --on-accent:#0d0f13;
-  --secret:#a58bff; --danger:#ff6b6f;
+  --secret:#a58bff; --danger:#ff6b6f; --green:#4cc38a;
   color-scheme:dark;
 }
 *{box-sizing:border-box;margin:0}
@@ -240,6 +240,7 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 
 /* card colors (derived from the palette) */
 [data-color="gray"]{--cc:var(--surface)}
+[data-color="green"]{--cc:color-mix(in srgb,var(--green) 15%,var(--bg))}
 [data-color="blue"]{--cc:var(--accent-soft)}
 [data-color="purple"]{--cc:color-mix(in srgb,var(--secret) 15%,var(--bg))}
 [data-color="red"]{--cc:color-mix(in srgb,var(--danger) 14%,var(--bg))}
@@ -258,3 +259,10 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 .sizes{display:flex;gap:1px;background:var(--surface);border-radius:8px;padding:2px;flex:none}
 .sizes button{height:28px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--sub)}
 .sizes button.on{background:var(--bg);color:var(--text);outline:1px solid var(--line);outline-offset:-1px}
+
+.tag[data-tc]::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--tc);vertical-align:1px}
+.tag[data-tc="gray"]{--tc:var(--faint)}
+.tag[data-tc="green"]{--tc:var(--green)}
+.tag[data-tc="blue"]{--tc:var(--accent)}
+.tag[data-tc="purple"]{--tc:var(--secret)}
+.tag[data-tc="red"]{--tc:var(--danger)}

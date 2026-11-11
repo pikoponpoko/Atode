@@ -5,9 +5,9 @@ const DBX_MD = '/atode.md';
 const PBKDF2_ITER = 600000;
 
 const $ = (s) => document.querySelector(s);
-const LS = { items: 'atode.items', meta: 'atode.meta', tok: 'atode.dbx', key: 'atode.appkey', rev: 'atode.rev', sort: 'atode.sort', og: 'atode.og', pkce: 'atode.pkce', lock: 'atode.autolock', last: 'atode.lastsync' };
+const LS = { items: 'atode.items', meta: 'atode.meta', tok: 'atode.dbx', key: 'atode.appkey', rev: 'atode.rev', tagc: 'atode.tagcolors', sort: 'atode.sort', og: 'atode.og', pkce: 'atode.pkce', lock: 'atode.autolock', last: 'atode.lastsync' };
 const KIND = { link: 'リンク', word: 'ワード', note: 'メモ' };
-const SENSITIVE = /パスワード|password|passwd|\bpass\s*[:：]|\bPW\b|pw\s*[:：]|暗証|パス\s*[:：]|ログイン/i;
+const SENSITIVE = /パスワード|password|passwd|credential|api\s*key|secret\s*key|access\s*key|リカバリ(?:ー)?コード|recovery\s*code|\bpass\s*[:：]|\bPW\b|pw\s*[:：]|暗証|パス\s*[:：]|ログイン/i;
 
 const isSensitive = (v) => SENSITIVE.test([v.title, v.text, ...(v.tags || [])].join('\n'));
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
@@ -18,7 +18,10 @@ let meta = load(LS.meta, {});
 let vaultKey = null;
 const plain = new Map(); // 鍵付きクリップの復号結果（メモリ内のみ）
 const ui = { kind: '', tag: '', q: '', archive: false, secretNew: false, sort: load(LS.sort, 'new') };
-const COLORS = [['', 'なし'], ['gray', 'グレー'], ['blue', '青'], ['purple', '紫'], ['red', '赤']];
+const COLORS = [['', 'なし'], ['gray', 'グレー'], ['green', '緑'], ['blue', '青'], ['purple', '紫'], ['red', '赤']];
+let tagc = load(LS.tagc, { at: 0, map: {} });
+const cardColor = (it, v) => it.color || (v?.tags || []).map((t) => tagc.map[t]).find(Boolean) || '';
+function setTagColor(t, c) { if (c) tagc.map[t] = c; else delete tagc.map[t]; tagc.at = Date.now(); save(LS.tagc, tagc); scheduleSync(); render(); }
 const sel = new Set();
 
 /* ---------- utils ---------- */
@@ -187,7 +190,7 @@ function fileMd() {
 }
 function canonicalJson() {
   const sorted = [...items].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  return JSON.stringify({ v: 1, meta, items: sorted });
+  return JSON.stringify({ v: 1, meta, tagColors: tagc, items: sorted });
 }
 
 /* ---------- render ---------- */
@@ -210,7 +213,9 @@ function renderTags() {
   const box = $('#tags'); box.textContent = '';
   [...cnt.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ja')).forEach(([t]) => {
     const b = document.createElement('button'); b.className = 'tag' + (ui.tag === t ? ' on' : ''); b.textContent = '#' + t;
+    if (tagc.map[t]) b.dataset.tc = tagc.map[t];
     b.onclick = () => { ui.tag = ui.tag === t ? '' : t; render(); };
+    b.oncontextmenu = (e) => { e.preventDefault(); openColorMenu(e.clientX, e.clientY, tagc.map[t] || '', (c) => setTagColor(t, c)); };
     box.append(b);
   });
 }
@@ -359,7 +364,7 @@ function iconBtn(icon, title, fn, cls = '') {
 async function patch(it, fields) { const v = view(it); if (!v) return; await upsert({ ...it, ...fields }, { title: v.title, text: v.text, url: v.url, tags: v.tags, kind: v.kind }); render(); }
 function card(it, v) {
   const el = document.createElement('article'); el.className = 'card' + (it.secret ? ' secret' : '') + (v ? ' ' + v.kind : '');
-  if (it.color) el.dataset.color = it.color;
+  const cc = cardColor(it, v); if (cc) el.dataset.color = cc;
   if (!v) {
     const t = document.createElement('div'); t.className = 'locked'; t.append(svg('lock')); t.append('鍵付き'); el.append(t);
   } else {
@@ -609,6 +614,25 @@ async function dbxUpload(path, body, rev) {
   if (!r.ok) throw new Error('Dropbox: ' + r.status);
   return r.json();
 }
+// Claude などが Dropbox に置いた一括変更ファイル（タグの追加・タグの色）を一度だけ取り込む
+const DBX_PATCH = '/atode-patch.json';
+async function applyPatch() {
+  let f; try { f = await dbxDownload(DBX_PATCH); } catch { return; }
+  if (!f) return;
+  try {
+    const p = JSON.parse(f.text); const now = Date.now(); let n = 0;
+    for (const [id, add] of Object.entries(p.addTags || {})) {
+      const i = items.findIndex((x) => x.id === id); const it = items[i];
+      if (!it || it.deleted || it.secret) continue;
+      const tags = [...(it.tags || [])]; for (const t of add) if (!tags.includes(t)) tags.push(t);
+      if (tags.length === (it.tags || []).length) continue;
+      items[i] = { ...it, tags, updatedAt: Math.max(now, (it.updatedAt || 0) + 1) }; n++;
+    }
+    if (p.tagColors) { tagc = { at: now, map: { ...tagc.map, ...p.tagColors } }; save(LS.tagc, tagc); }
+    if (n) toast(n + '件にタグを付けました');
+  } catch {}
+  try { await fetch('https://api.dropboxapi.com/2/files/delete_v2', { method: 'POST', headers: { Authorization: 'Bearer ' + (await token()), 'Content-Type': 'application/json' }, body: JSON.stringify({ path: DBX_PATCH }) }); } catch {}
+}
 let syncing = false, syncAgain = false, syncT;
 function scheduleSync() { clearTimeout(syncT); syncT = setTimeout(sync, 1200); }
 function setSync(state, msg = '') {
@@ -630,7 +654,10 @@ async function sync() {
       if (rd.meta?.salt && rd.meta.salt !== meta.salt) { if (vaultKey) lock(); meta = rd.meta; save(LS.meta, meta); }
       const m = new Map();
       for (const x of [...(rd.items || []), ...items]) { const y = m.get(x.id); if (!y || (x.updatedAt || 0) > (y.updatedAt || 0)) m.set(x.id, x); }
-      items = [...m.values()]; save(LS.items, items);
+      items = [...m.values()];
+      if (rd.tagColors && (rd.tagColors.at || 0) > (tagc.at || 0)) { tagc = rd.tagColors; save(LS.tagc, tagc); }
+      if (attempt === 0) await applyPatch();
+      save(LS.items, items);
       const out = canonicalJson();
       if (!remote || out !== remote.text) {
         try { await dbxUpload(DBX_JSON, out, remote ? remote.rev || null : undefined); }
