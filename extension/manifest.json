@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Atode",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "表示中のページ・選択テキスト・リンクをAtodeに保存",
   "permissions": ["activeTab", "contextMenus", "tabs"],
-  "host_permissions": ["https://pikoponpoko.github.io/atode/*"],
+  "host_permissions": ["https://pikoponpoko.github.io/Atode/*"],
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "Atodeに保存", "default_icon": { "16": "icon-16.png", "32": "icon-32.png" } },
   "icons": { "16": "icon-16.png", "32": "icon-32.png", "48": "icon-48.png", "128": "icon-128.png" },
