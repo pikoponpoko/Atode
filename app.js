@@ -400,6 +400,13 @@ $('#selDel').onclick = () => {
   });
 };
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sel.size && !document.querySelector('dialog[open]')) { sel.clear(); render(); } });
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'a' || e.altKey || e.shiftKey) return;
+  if (document.querySelector('dialog[open]') || e.target.closest('input,textarea,select,[contenteditable]')) return;
+  e.preventDefault();
+  for (const { it } of visible()) sel.add(it.id);
+  render();
+});
 function removeWithUndo(id, msg = '削除しました') {
   const prev = items.find((x) => x.id === id); if (!prev) return;
   const keepPlain = plain.get(id);
@@ -503,6 +510,31 @@ $('#btnCopyAll').onclick = () => { const l = visible().filter((x) => x.v); if (!
 $('#btnLock').onclick = () => (vaultKey ? lock() : unlock());
 $('#btnSync').onclick = () => (connected() ? sync() : openSettings());
 
+/* ---------- display ---------- */
+const FONTS = [['', '標準（システム）'], ['Noto Sans JP'], ['BIZ UDPGothic'], ['M PLUS 1p'], ['Zen Kaku Gothic New'], ['M PLUS Rounded 1c'], ['Zen Maru Gothic'], ['Kosugi Maru'], ['Noto Serif JP'], ['Shippori Mincho'], ['Zen Old Mincho']];
+const SIZES = [['小', 1], ['標準', 1.1], ['大', 1.22], ['特大', 1.36]];
+const disp = { font: '', size: 1.1, ...load('atode.display', {}) };
+function applyDisplay() {
+  const r = document.documentElement.style;
+  r.setProperty('--fz', disp.size);
+  let l = document.getElementById('gfont');
+  if (disp.font) {
+    const href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(disp.font).replace(/%20/g, '+') + ':wght@400;500;700&display=swap';
+    if (!l) { l = document.createElement('link'); l.id = 'gfont'; l.rel = 'stylesheet'; document.head.append(l); }
+    if (l.href !== href) l.href = href;
+    r.setProperty('--ff', `"${disp.font}","Hiragino Sans","Noto Sans JP",system-ui,sans-serif`);
+  } else { l?.remove(); r.removeProperty('--ff'); }
+}
+function renderDisplay() {
+  const f = $('#sFont'); f.textContent = '';
+  for (const [v, label] of FONTS) { const o = document.createElement('option'); o.value = v; o.textContent = label || v; f.append(o); }
+  f.value = disp.font;
+  const z = $('#sSize'); z.textContent = '';
+  for (const [label, v] of SIZES) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = disp.size === v ? 'on' : ''; b.onclick = () => { disp.size = v; save('atode.display', disp); applyDisplay(); renderDisplay(); render(); }; z.append(b); }
+}
+$('#sFont').onchange = (e) => { disp.font = e.target.value; save('atode.display', disp); applyDisplay(); document.fonts?.ready.then(render); };
+applyDisplay();
+
 /* ---------- auto lock ---------- */
 const LOCK_OPTS = [1, 5, 15, 60, 0];
 let lockMin = load(LS.lock, 5); let hiddenAt = 0;
@@ -604,7 +636,7 @@ function openSettings() {
   const bm = `javascript:(()=>{const s=String(getSelection());window.open('${base()}?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)+(s?'&text='+encodeURIComponent(s):''),'atode','width=420,height=360')})()`;
   $('#sBookmarklet').href = bm;
   $('#sShortcut').value = base() + '?text=';
-  lockLabel(); updateLockBtn();
+  lockLabel(); updateLockBtn(); renderDisplay();
   renderSettingsStatus();
   $('#dlgSettings').showModal();
 }
@@ -716,6 +748,7 @@ async function handleParams() {
 /* ---------- boot ---------- */
 (async () => {
   purgeEmpty(); updateLockBtn(); syncSecretNew(); syncSort(); render(); grow();
+  if (disp.font) document.fonts?.ready.then(render);
   await handleParams();
   if (connected()) sync(); else setSync('off');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

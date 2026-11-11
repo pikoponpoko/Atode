@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com https://api.microlink.io; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com https://api.microlink.io; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0f13" media="(prefers-color-scheme: dark)">
@@ -97,6 +97,10 @@
 <dialog id="dlgSettings" class="dlg">
   <form method="dialog">
     <div class="dh"><b>設定</b><span class="grow"></span><button value="cancel" class="ib" title="閉じる"><svg><use href="#i-x"/></svg></button></div>
+    <section>
+      <h3>表示</h3>
+      <div class="row"><select id="sFont" class="sel" title="フォント"></select><div class="sizes" id="sSize"></div></div>
+    </section>
     <section>
       <h3>Dropbox</h3>
       <div class="row"><input id="sKey" placeholder="App key" autocomplete="off" spellcheck="false"><button type="button" id="sConnect" class="btn">接続</button></div>
