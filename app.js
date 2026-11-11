@@ -764,7 +764,7 @@ function openSettings() {
   const bm = `javascript:(()=>{const s=String(getSelection());window.open('${base()}?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)+(s?'&text='+encodeURIComponent(s):''),'atode','width=420,height=360')})()`;
   $('#sBookmarklet').href = bm;
   $('#sShortcut').value = INBOX_PATH;
-  $('#sInstall').hidden = !installEvt;
+  $('#sInstall').parentElement.hidden = !installEvt;
   lockLabel(); updateLockBtn(); renderDisplay(); renderTheme();
   renderSettingsStatus();
   $('#dlgSettings').showModal();
@@ -785,9 +785,9 @@ $('#sConnect').onclick = () => {
 };
 $('#sBookmarklet').onclick = (e) => { e.preventDefault(); toast('ブックマークバーへドラッグしてください'); };
 let installEvt = null;
-addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; const b = $('#sInstall'); if (b) b.hidden = false; });
-addEventListener('appinstalled', () => { installEvt = null; $('#sInstall').hidden = true; });
-$('#sInstall').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $('#sInstall').hidden = true; };
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; $('#sInstall').parentElement.hidden = false; });
+addEventListener('appinstalled', () => { installEvt = null; $('#sInstall').parentElement.hidden = true; });
+$('#sInstall').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $('#sInstall').parentElement.hidden = true; };
 $('#sShortcutCopy').onclick = () => copyText($('#sShortcut').value);
 $('#sVault').onclick = async () => {
   if (hasVault()) {
