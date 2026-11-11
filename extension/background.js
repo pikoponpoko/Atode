@@ -9,7 +9,7 @@ async function save({ url = '', title = '', text = '' }) {
   const cur = await chrome.windows.getCurrent();
   const w = 380, h = 240;
   await chrome.windows.create({
-    url: APP + '?' + q, type: 'popup', width: w, height: h, focused: false,
+    url: APP + '?' + q, type: 'popup', width: w, height: h, focused: true,
     left: Math.max(0, (cur.left || 0) + (cur.width || w) - w - 16), top: (cur.top || 0) + 72,
   });
 }

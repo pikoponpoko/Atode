@@ -525,7 +525,7 @@ async function handleParams() {
   if (!v.url && !v.text && v.title) { v.text = v.title; v.title = ''; v.kind = kindOf(v); }
   await addClip(v);
   toast('保存しました');
-  if (p.get('src') === 'ext') { await sync(); location.hash = 'saved'; return; }
+  if (p.get('src') === 'ext') { await Promise.all([sync(), new Promise((r) => setTimeout(r, 700))]); location.hash = 'saved'; return; }
   if (window.name === 'atode' && window.opener) setTimeout(() => { sync().finally(() => window.close()); }, 300);
 }
 
