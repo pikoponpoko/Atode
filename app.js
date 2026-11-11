@@ -9,6 +9,7 @@ const LS = { items: 'atode.items', meta: 'atode.meta', tok: 'atode.dbx', key: 'a
 const KIND = { link: 'リンク', word: 'ワード', note: 'メモ' };
 const SENSITIVE = /パスワード|password|passwd|\bpass\s*[:：]|\bPW\b|pw\s*[:：]|暗証|パス\s*[:：]|ログイン/i;
 
+const isSensitive = (v) => SENSITIVE.test([v.title, v.text, ...(v.tags || [])].join('\n'));
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
@@ -34,10 +35,10 @@ const isoDate = (t) => { const d = new Date(t); const p = (x) => String(x).padSt
 function svg(id) { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + id); s.append(u); return s; }
 function setIcon(btn, id) { btn.querySelector('use').setAttribute('href', '#i-' + id); }
 let toastT;
-function toast(msg, action, fn) {
+function toast(msg, action, fn, ms) {
   const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT);
   if (action) { const b = document.createElement('button'); b.textContent = action; b.onclick = () => { t.hidden = true; fn(); }; t.append(b); }
-  toastT = setTimeout(() => (t.hidden = true), action ? 6000 : 1800);
+  toastT = setTimeout(() => (t.hidden = true), ms || (action ? 6000 : 1800));
 }
 async function copyText(s) { try { await navigator.clipboard.writeText(s); toast('コピーしました'); } catch { toast('コピーできませんでした'); } }
 
@@ -142,6 +143,22 @@ function purgeEmpty() {
   for (const it of items) if (!it.deleted && !it.secret && isEmpty(it)) { remove(it.id); n++; }
   return n;
 }
+// パスワードらしき鍵なしメモ（タグ判定を追加する前に読み込んだもの）に鍵をかける
+let sensAsked = false;
+function checkSensitive() {
+  if (sensAsked) return;
+  const list = items.filter((it) => !it.deleted && !it.secret && isSensitive(it));
+  if (!list.length) return;
+  sensAsked = true;
+  toast(`パスワードらしきメモ${list.length}件に鍵がかかっていません`, '鍵をかける', () => lockSensitive(), 20000);
+}
+async function lockSensitive() {
+  if (!(await unlock())) { sensAsked = false; return; }
+  const list = items.filter((it) => !it.deleted && !it.secret && isSensitive(it));
+  for (const it of list) await upsert({ ...it, secret: true }, { title: it.title, text: it.text, url: it.url, tags: it.tags, kind: it.kind });
+  updateLockBtn(); render();
+  toast(`${list.length}件に鍵をかけました`);
+}
 async function addClip(v, secret = false) {
   if (secret && !(await unlock())) return null;
   const it = { id: uid(), createdAt: Date.now(), secret };
@@ -178,7 +195,7 @@ const sorter = (a, b) => (!!b.pinned - !!a.pinned) || (b.createdAt || 0) - (a.cr
 const viewSorter = (a, b) => (!!b.pinned - !!a.pinned) || ((b.createdAt || 0) - (a.createdAt || 0)) * (ui.sort === 'old' ? -1 : 1);
 function visible() {
   const q = ui.q.trim().toLowerCase();
-  return items.filter((it) => !it.deleted && !!it.archived === ui.archive).sort(viewSorter).map((it) => ({ it, v: view(it) })).filter(({ it, v }) => {
+  return items.filter((it) => !it.deleted && (!!it.archived === ui.archive || (ui.tag && !ui.archive))).sort(viewSorter).map((it) => ({ it, v: view(it) })).filter(({ it, v }) => {
     if (ui.kind === 'secret') { if (!it.secret) return false; }
     else if (ui.kind && (!v || v.kind !== ui.kind)) return false;
     if (ui.tag && (!v || !(v.tags || []).includes(ui.tag))) return false;
@@ -188,7 +205,7 @@ function visible() {
 }
 function renderTags() {
   const cnt = new Map();
-  for (const it of items) { if (it.deleted || !!it.archived !== ui.archive) continue; const v = view(it); for (const t of v?.tags || []) cnt.set(t, (cnt.get(t) || 0) + 1); }
+  for (const it of items) { if (it.deleted) continue; const v = view(it); for (const t of v?.tags || []) cnt.set(t, (cnt.get(t) || 0) + 1); }
   if (ui.tag && !cnt.has(ui.tag)) ui.tag = '';
   const box = $('#tags'); box.textContent = '';
   [...cnt.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ja')).forEach(([t]) => {
@@ -205,7 +222,8 @@ function render() {
   syncSelBar();
   const box = $('#list'); box.textContent = '';
   if (!list.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = items.some((i) => !i.deleted) ? '該当なし' : 'クリップはまだありません'; box.append(e); return; }
-  const pinned = list.filter((x) => x.it.pinned), rest = list.filter((x) => !x.it.pinned);
+  const arc = ui.archive ? [] : list.filter((x) => x.it.archived); const act = ui.archive ? list : list.filter((x) => !x.it.archived);
+  const pinned = act.filter((x) => x.it.pinned), rest = act.filter((x) => !x.it.pinned);
   const section = (label, arr) => {
     if (!arr.length) return;
     if (label) { const h = document.createElement('div'); h.className = 'gh'; h.textContent = label; box.append(h); }
@@ -213,6 +231,7 @@ function render() {
   };
   section(pinned.length ? 'ピン留め' : '', pinned);
   section(pinned.length ? 'その他' : '', rest);
+  section('アーカイブ', arc);
 }
 // 左上から横方向に作成日順で並べ、各カードは一番短い列へ置く
 function layout() {
@@ -620,6 +639,7 @@ async function sync() {
     }
     await decryptAll();
     if (purgeEmpty()) save(LS.items, items);
+    checkSensitive();
     save(LS.last, Date.now());
     render(); updateLockBtn(); setSync('ok');
   } catch (e) { setSync('err', e.message); }
@@ -704,7 +724,7 @@ $('#sImport').onchange = async (e) => {
     }
     const notes = raws.map((s) => { try { return fromKeep(JSON.parse(s)); } catch { return null; } }).filter(Boolean);
     if (!notes.length) { msg.textContent = 'Keepのメモが見つかりませんでした'; msg.className = 'msg err'; return; }
-    const sens = notes.filter((n) => SENSITIVE.test([n.v.title, n.v.text].join('\n')));
+    const sens = notes.filter((n) => isSensitive(n.v));
     if (sens.length && !vaultKey) {
       msg.textContent = `パスワードらしきメモが${sens.length}件あります。鍵をかけて保存するため合言葉が必要です。`;
       if (!(await unlock())) { msg.textContent = '読み込みを中止しました'; return; }
@@ -749,6 +769,7 @@ async function handleParams() {
 (async () => {
   purgeEmpty(); updateLockBtn(); syncSecretNew(); syncSort(); render(); grow();
   if (disp.font) document.fonts?.ready.then(render);
+  setTimeout(checkSensitive, 600);
   await handleParams();
   if (connected()) sync(); else setSync('off');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
