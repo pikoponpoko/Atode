@@ -282,3 +282,4 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 .tgrid .tn{position:relative;padding:2px 5px;border-radius:5px;background:#14201C;color:#fff;font-weight:700;font-size:10.5px;line-height:1.18;text-align:center;white-space:nowrap;letter-spacing:0}
 .tgrid .tbtn.dk .tn{background:#fff;color:#14201C}
 .tgrid .tbtn[aria-pressed="true"]{border-color:var(--text)}
+@media (pointer:coarse){.row.pc{display:none}}
