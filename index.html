@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Clip">
+<title>Clip</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <span class="brand">Clip</span>
+  <label class="search"><svg><use href="#i-search"/></svg><input id="q" type="search" placeholder="検索" autocomplete="off"></label>
+  <button id="btnSync" class="ib" title="同期"><svg><use href="#i-cloud-off"/></svg></button>
+  <button id="btnLock" class="ib" title="鍵付きクリップを開く"><svg><use href="#i-lock"/></svg></button>
+  <button id="btnCopyAll" class="ib" title="表示中をMarkdownでコピー"><svg><use href="#i-copy"/></svg></button>
+  <button id="btnSettings" class="ib" title="設定"><svg><use href="#i-settings"/></svg></button>
+</header>
+
+<form id="composer" class="composer" autocomplete="off">
+  <textarea id="cin" rows="1" placeholder="URL・ワード・メモ　#タグ"></textarea>
+  <button id="btnSecretNew" type="button" class="ib" title="鍵をかけて保存" aria-pressed="false"><svg><use href="#i-unlock"/></svg></button>
+  <button class="ib accent" type="submit" title="保存（Ctrl+Enter）"><svg><use href="#i-plus"/></svg></button>
+</form>
+
+<nav class="filters">
+  <div class="seg" id="kinds">
+    <button data-k="" class="on" title="すべて"><svg><use href="#i-all"/></svg></button>
+    <button data-k="link" title="リンク"><svg><use href="#i-link"/></svg></button>
+    <button data-k="word" title="ワード"><svg><use href="#i-word"/></svg></button>
+    <button data-k="note" title="メモ"><svg><use href="#i-note"/></svg></button>
+    <button data-k="secret" title="鍵付き"><svg><use href="#i-lock"/></svg></button>
+  </div>
+  <button id="btnArchive" class="ib sm" title="アーカイブを表示" aria-pressed="false"><svg><use href="#i-archive"/></svg></button>
+  <div class="tags" id="tags"></div>
+  <span class="count" id="count"></span>
+</nav>
+
+<main id="list" class="list"></main>
+
+<dialog id="dlgEdit" class="dlg">
+  <form method="dialog" id="fEdit">
+    <div class="dh">
+      <span id="eKind" class="kind"></span>
+      <input id="eTitle" placeholder="タイトル">
+      <button value="cancel" class="ib" title="閉じる"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="urlrow"><input id="eUrl" type="url" placeholder="URL"><a id="eOpen" class="ib" target="_blank" rel="noopener noreferrer" title="開く"><svg><use href="#i-ext"/></svg></a></div>
+    <textarea id="eText" rows="8" placeholder="本文"></textarea>
+    <input id="eTags" placeholder="#タグ">
+    <div class="df">
+      <button type="button" id="eDel" class="ib danger" title="削除"><svg><use href="#i-trash"/></svg></button>
+      <button type="button" id="eArc" class="ib" title="アーカイブ"><svg><use href="#i-archive"/></svg></button>
+      <button type="button" id="ePin" class="ib" title="ピン留め"><svg><use href="#i-pin"/></svg></button>
+      <button type="button" id="eSec" class="ib" title="鍵をかける"><svg><use href="#i-unlock"/></svg></button>
+      <button type="button" id="eCopy" class="ib" title="Markdownでコピー"><svg><use href="#i-copy"/></svg></button>
+      <span class="grow"></span>
+      <button value="save" class="btn accent">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgPass" class="dlg narrow">
+  <form method="dialog" id="fPass">
+    <div class="dh"><b id="pTitle">合言葉</b><span class="grow"></span><button value="cancel" class="ib" title="閉じる"><svg><use href="#i-x"/></svg></button></div>
+    <input id="pIn" type="password" autocomplete="current-password" placeholder="合言葉">
+    <input id="pIn2" type="password" autocomplete="new-password" placeholder="もう一度">
+    <p id="pMsg" class="msg"></p>
+    <div class="df"><span class="grow"></span><button value="ok" class="btn accent">OK</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgSettings" class="dlg">
+  <form method="dialog">
+    <div class="dh"><b>設定</b><span class="grow"></span><button value="cancel" class="ib" title="閉じる"><svg><use href="#i-x"/></svg></button></div>
+    <section>
+      <h3>Dropbox</h3>
+      <div class="row"><input id="sKey" placeholder="App key" autocomplete="off" spellcheck="false"><button type="button" id="sConnect" class="btn">接続</button></div>
+      <p id="sStatus" class="msg"></p>
+    </section>
+    <section>
+      <h3>クリップの追加</h3>
+      <div class="row"><a id="sBookmarklet" class="btn">Clipに保存</a><span class="hint">ブックマークバーへドラッグ</span></div>
+      <div class="row"><input id="sShortcut" readonly title="iPhoneショートカット用URL"><button type="button" id="sShortcutCopy" class="ib" title="コピー"><svg><use href="#i-copy"/></svg></button></div>
+    </section>
+    <section>
+      <h3>データ</h3>
+      <div class="row">
+        <label class="btn">Google Keepから読み込む<input id="sImport" type="file" accept=".zip,.json" multiple hidden></label>
+        <button type="button" id="sExport" class="btn">Markdownで書き出す</button>
+      </div>
+      <p id="sImportMsg" class="msg"></p>
+    </section>
+    <section>
+      <h3>鍵付きクリップ</h3>
+      <div class="row"><button type="button" id="sVault" class="btn">合言葉を設定</button><button type="button" id="sAutoLock" class="btn">自動ロック: 5分</button></div>
+    </section>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.78A6 6 0 0 0 4.5 13 3 3 0 0 0 6 19z"/></symbol>
+    <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M3 3l18 18M9 5.3A6 6 0 0 1 16.1 10.2 4.5 4.5 0 0 1 21 14.6M17.5 19H6a3 3 0 0 1-1.5-6 6 6 0 0 1 1.7-3.6"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17v.5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-all" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></symbol>
+    <symbol id="i-word" viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 6h14M5 10h14M5 14h10M5 18h7"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11h14V8M10 12h4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  </defs>
+</svg>
+<script src="app.js" type="module"></script>
+</body>
+</html>
