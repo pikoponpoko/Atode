@@ -19,13 +19,18 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({ id: 'page', title: 'このページをAtodeに保存', contexts: ['page'] });
     chrome.contextMenus.create({ id: 'sel', title: '選択テキストをAtodeに保存', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'link', title: 'リンクをAtodeに保存', contexts: ['link'] });
+    chrome.contextMenus.create({ id: 'open', title: 'Atodeを開く', contexts: ['action'] });
     chrome.contextMenus.create({ id: 'img', title: '画像のURLをAtodeに保存', contexts: ['image'] });
   });
 });
 
-chrome.action.onClicked.addListener((tab) => save({ url: tab.url, title: tab.title }));
+const openApp = () => chrome.tabs.create({ url: APP });
+
+// 保存できるページ以外（新しいタブなど）では、Atodeを普通のタブで開く
+chrome.action.onClicked.addListener((tab) => (/^https?:/.test(tab.url || '') ? save({ url: tab.url, title: tab.title }) : openApp()));
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'open') return openApp();
   if (info.menuItemId === 'sel') return save({ url: info.pageUrl, title: tab?.title, text: info.selectionText });
   if (info.menuItemId === 'link') return save({ url: info.linkUrl, text: info.selectionText || '' });
   if (info.menuItemId === 'img') return save({ url: info.srcUrl, title: tab?.title });

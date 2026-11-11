@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Atode",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "表示中のページ・選択テキスト・リンクをAtodeに保存",
   "permissions": ["activeTab", "contextMenus", "tabs"],
   "host_permissions": ["https://pikoponpoko.github.io/Atode/*"],
