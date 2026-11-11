@@ -6,12 +6,12 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0d0f13" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Clip">
-<title>Clip</title>
+<meta name="apple-mobile-web-app-title" content="Atode">
+<title>Atode</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -19,7 +19,7 @@
 </head>
 <body>
 <header class="bar">
-  <span class="brand">Clip</span>
+  <span class="brand"><svg class="mark" viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6"/><path d="M9.5 13.5a3 3 0 0 0 4.24 0l2.25-2.25a3 3 0 0 0-4.24-4.24l-.75.75M14.5 10.5a3 3 0 0 0-4.24 0l-2.25 2.25a3 3 0 0 0 4.24 4.24l.75-.75"/></svg>Atode</span>
   <label class="search"><svg><use href="#i-search"/></svg><input id="q" type="search" placeholder="検索" autocomplete="off"></label>
   <button id="btnSync" class="ib" title="同期"><svg><use href="#i-cloud-off"/></svg></button>
   <button id="btnLock" class="ib" title="鍵付きクリップを開く"><svg><use href="#i-lock"/></svg></button>
@@ -28,9 +28,11 @@
 </header>
 
 <form id="composer" class="composer" autocomplete="off">
+  <div class="cbox">
   <textarea id="cin" rows="1" placeholder="URL・ワード・メモ　#タグ"></textarea>
   <button id="btnSecretNew" type="button" class="ib" title="鍵をかけて保存" aria-pressed="false"><svg><use href="#i-unlock"/></svg></button>
   <button class="ib accent" type="submit" title="保存（Ctrl+Enter）"><svg><use href="#i-plus"/></svg></button>
+  </div>
 </form>
 
 <nav class="filters">
@@ -90,7 +92,7 @@
     </section>
     <section>
       <h3>クリップの追加</h3>
-      <div class="row"><a id="sBookmarklet" class="btn">Clipに保存</a><span class="hint">ブックマークバーへドラッグ</span></div>
+      <div class="row"><a id="sBookmarklet" class="btn">Atodeに保存</a><span class="hint">ブックマークバーへドラッグ</span></div>
       <div class="row"><input id="sShortcut" readonly title="iPhoneショートカット用URL"><button type="button" id="sShortcutCopy" class="ib" title="コピー"><svg><use href="#i-copy"/></svg></button></div>
     </section>
     <section>
