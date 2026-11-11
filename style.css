@@ -218,14 +218,27 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 @media (hover:none){.card .ck{opacity:.9;background:var(--bg);color:var(--faint);outline:1.5px solid var(--line);outline-offset:-1.5px;top:6px;left:auto;right:36px}}
 
 /* checklist */
-.card .body{max-height:420px;overflow:hidden}
 .card .body p{-webkit-line-clamp:6}
+.cbr span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .more{padding:2px 0 0 24px;color:var(--faint);font-size:calc(12px*var(--fz))}
 .cbr{display:flex;align-items:flex-start;gap:8px;padding:2px 0;line-height:1.6}
 .cbr .cb{display:flex;align-items:center;justify-content:center;flex:none;width:16px;height:16px;margin-top:.2em;padding:0;border:1.5px solid var(--faint);border-radius:4px;background:none;color:transparent;cursor:pointer}
 .cbr .cb svg{width:12px;height:12px;stroke-width:2.6}
 .cbr .cb:hover{border-color:var(--accent)}
 .cbr.on .cb{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
 .cbr.on span{color:var(--faint);text-decoration:line-through}
+.elist{display:flex;flex-direction:column;max-height:55dvh;overflow-y:auto;padding:4px 10px;border:1px solid var(--line);border-radius:8px}
+.elist:focus-within{border-color:var(--accent)}
+.erow{display:flex;align-items:flex-start;gap:8px}
+.erow .cb{display:flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;margin-top:7px;padding:0;border:1.5px solid var(--faint);border-radius:4px;background:none;color:transparent;cursor:pointer}
+.erow .cb svg{width:13px;height:13px;stroke-width:2.6}
+.erow.on .cb{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
+.dlg .erow textarea{flex:1;min-height:0;height:auto;padding:3px 0;border:0;border-radius:0;background:none;resize:none;overflow:hidden;line-height:1.6}
+.dlg[data-color] .erow textarea{background:none}
+.erow.on textarea{color:var(--faint);text-decoration:line-through}
+.eadd{display:flex;align-items:center;width:28px;height:28px;margin-left:-5px;padding:0 5px;border:0;background:none;color:var(--faint);cursor:pointer}
+.eadd svg{width:16px;height:16px}
+.eadd:hover{color:var(--accent)}
 
 /* link preview */
 .card .lp{display:flex;gap:9px;align-items:center;margin-top:8px;padding:6px;border-radius:8px;background:var(--chip);color:var(--text);text-decoration:none;overflow:hidden}

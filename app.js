@@ -264,15 +264,19 @@ let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(
 
 /* ---------- checklist ---------- */
 const CB_RE = /^(\s*)[-*]\s\[( |x|X)\]\s?(.*)$/;
+const CARD_ROWS = 10;
 function bodyEl(it, v) {
   const lines = v.text.split('\n');
   if (!lines.some((l) => CB_RE.test(l))) { const x = document.createElement('p'); x.textContent = v.text; return x; }
   const body = document.createElement('div'); body.className = 'body';
-  let buf = [];
-  const flush = () => { if (!buf.length) return; const x = document.createElement('p'); x.textContent = buf.join('\n'); body.append(x); buf = []; };
+  let buf = [], shown = 0, rest = 0;
+  const flush = () => { if (!buf.length) return; const x = document.createElement('p'); x.textContent = buf.join('\n'); body.append(x); shown += Math.min(buf.length, 6); buf = []; };
   lines.forEach((l, i) => {
+    if (shown >= CARD_ROWS) { if (l.trim()) rest++; return; }
     const m = l.match(CB_RE); if (!m) { buf.push(l); return; }
     flush();
+    if (shown >= CARD_ROWS) { rest++; return; }
+    shown++;
     const on = m[2] !== ' ';
     const row = document.createElement('div'); row.className = 'cbr' + (on ? ' on' : ''); row.style.paddingLeft = Math.min(m[1].length, 8) * 6 + 'px';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'cb'; b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', on); b.append(svg('check'));
@@ -282,6 +286,7 @@ function bodyEl(it, v) {
     body.append(row);
   });
   flush();
+  if (rest) { const x = document.createElement('div'); x.className = 'more'; x.textContent = '+' + rest; body.append(x); }
   return body;
 }
 async function toggleCheck(it, i) {
@@ -451,6 +456,7 @@ function openEdit(id) {
   const it = items.find((x) => x.id === id); const v = view(it); if (!v) return;
   editing = { id, secret: !!it.secret, pinned: !!it.pinned, archived: !!it.archived, color: it.color || '' };
   $('#eTitle').value = v.title || ''; $('#eUrl').value = v.url || ''; $('#eText').value = v.text || '';
+  setListMode((v.text || '').split('\n').some((l) => CB_RE.test(l)));
   $('#eTags').value = (v.tags || []).map((t) => '#' + t).join(' ');
   $('#dlgEdit').returnValue = '';
   syncEditBtns();
@@ -471,6 +477,68 @@ function editVals() {
   const v = { title: $('#eTitle').value.trim(), url: $('#eUrl').value.trim(), text: $('#eText').value.replace(/\s+$/, ''), tags };
   v.kind = kindOf(v); return v;
 }
+/* checklist editor */
+const eList = $('#eList');
+let listMode = false;
+function setListMode(on) {
+  listMode = on; $('#eText').hidden = on; eList.hidden = !on;
+  $('#eChk').setAttribute('aria-pressed', on);
+  if (on) buildList();
+}
+function buildList() {
+  eList.textContent = '';
+  const lines = $('#eText').value.replace(/\s+$/, '').split('\n');
+  lines.forEach((l) => { const m = l.match(CB_RE); eList.append(m ? erow(m[3], true, m[2] !== ' ', m[1]) : erow(l, false)); });
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'eadd'; add.title = '項目を追加'; add.append(svg('plus'));
+  add.onclick = () => { const r = erow('', true); add.before(r); focusRow(r, 0); serializeList(); };
+  eList.append(add);
+  requestAnimationFrame(() => eList.querySelectorAll('textarea').forEach(fit));
+}
+function fit(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+function erow(text, cb, on = false, ind = '') {
+  const r = document.createElement('div'); r.className = 'erow' + (cb ? '' : ' plain') + (on ? ' on' : ''); r.dataset.ind = ind;
+  if (cb) r.style.paddingLeft = Math.min(ind.length, 8) * 6 + 'px';
+  if (cb) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cb'; b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', on); b.append(svg('check'));
+    b.onclick = () => { const v = !r.classList.contains('on'); r.classList.toggle('on', v); b.setAttribute('aria-checked', v); serializeList(); };
+    r.append(b);
+  }
+  const t = document.createElement('textarea'); t.rows = 1; t.value = text; t.enterKeyHint = 'next';
+  t.oninput = () => {
+    if (t.value.includes('\n')) { const [first, ...more] = t.value.split('\n'); t.value = first; let at = r; more.forEach((x) => { const n = erow(x, cb, false, r.dataset.ind); at.after(n); at = n; }); focusRow(at, at.querySelector('textarea').value.length); eList.querySelectorAll('textarea').forEach(fit); }
+    fit(t); serializeList();
+  };
+  t.onkeydown = (e) => {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const a = t.selectionStart, tail = t.value.slice(t.selectionEnd); t.value = t.value.slice(0, a); fit(t);
+      const n = erow(tail, cb, false, r.dataset.ind); r.after(n); focusRow(n, 0); serializeList();
+    } else if (e.key === 'Backspace' && t.selectionStart === 0 && t.selectionEnd === 0) {
+      const prev = r.previousElementSibling; if (!prev) return;
+      e.preventDefault();
+      const pt = prev.querySelector('textarea'), at = pt.value.length; pt.value += t.value; fit(pt); r.remove(); focusRow(prev, at); serializeList();
+    }
+  };
+  r.append(t);
+  return r;
+}
+function focusRow(r, at) { const t = r.querySelector('textarea'); t.focus(); t.setSelectionRange(at, at); }
+function serializeList() {
+  $('#eText').value = [...eList.querySelectorAll('.erow')].map((r) => {
+    const t = r.querySelector('textarea').value;
+    return r.classList.contains('plain') ? t : `${r.dataset.ind}- [${r.classList.contains('on') ? 'x' : ' '}] ${t}`;
+  }).join('\n');
+  syncEditBtns();
+}
+$('#eChk').onclick = () => {
+  const ta = $('#eText');
+  if (listMode) { ta.value = ta.value.split('\n').map((l) => { const m = l.match(CB_RE); return m ? m[1] + m[3] : l; }).join('\n'); setListMode(false); ta.focus(); return; }
+  const lines = ta.value.replace(/\s+$/, '').split('\n');
+  ta.value = lines.map((l) => (CB_RE.test(l) ? l : l.trim() || lines.length === 1 ? '- [ ] ' + l.trim() : l)).join('\n');
+  setListMode(true);
+  const rs = eList.querySelectorAll('.erow'); const last = rs[rs.length - 1]; if (last) focusRow(last, last.querySelector('textarea').value.length);
+};
 $('#eUrl').oninput = syncEditBtns; $('#eTitle').oninput = syncEditBtns; $('#eText').oninput = syncEditBtns;
 $('#ePin').onclick = () => { editing.pinned = !editing.pinned; syncEditBtns(); };
 $('#eArc').onclick = () => { editing.archived = !editing.archived; syncEditBtns(); };
