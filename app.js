@@ -1,11 +1,11 @@
-// Clip — クリップ＆メモ。データは端末内とDropbox（アプリフォルダ）に保存。
+// Atode — クリップ＆メモ。データは端末内とDropbox（アプリフォルダ）に保存。
 const DEFAULT_APP_KEY = '83k9w84j8h7m2t4';
-const DBX_JSON = '/clips.json';
-const DBX_MD = '/clips.md';
+const DBX_JSON = '/atode.json';
+const DBX_MD = '/atode.md';
 const PBKDF2_ITER = 600000;
 
 const $ = (s) => document.querySelector(s);
-const LS = { items: 'clip.items', meta: 'clip.meta', tok: 'clip.dbx', key: 'clip.appkey', rev: 'clip.rev', pkce: 'clip.pkce', lock: 'clip.autolock', last: 'clip.lastsync' };
+const LS = { items: 'atode.items', meta: 'atode.meta', tok: 'atode.dbx', key: 'atode.appkey', rev: 'atode.rev', pkce: 'atode.pkce', lock: 'atode.autolock', last: 'atode.lastsync' };
 const KIND = { link: 'リンク', word: 'ワード', note: 'メモ' };
 const SENSITIVE = /パスワード|password|passwd|\bpass\s*[:：]|\bPW\b|pw\s*[:：]|暗証|パス\s*[:：]|ログイン/i;
 
@@ -27,7 +27,7 @@ const b64url = (buf) => b64(buf).replace(/\+/g, '-').replace(/\//g, '_').replace
 const rand = (n) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 const URL_RE = /https?:\/\/[^\s<>"'）」』】]+/;
 const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
-const fmtDate = (t) => { const d = new Date(t); const n = new Date(); const p = (x) => String(x).padStart(2, '0'); return (d.getFullYear() === n.getFullYear() ? '' : d.getFullYear() + '/') + (d.getMonth() + 1) + '/' + d.getDate() + (d.toDateString() === n.toDateString() ? ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) : ''); };
+const fmtDate = (t) => { const d = new Date(t); const n = new Date(); const p = (x) => String(x).padStart(2, '0'); if (d.toDateString() === n.toDateString()) return p(d.getHours()) + ':' + p(d.getMinutes()); return (d.getFullYear() === n.getFullYear() ? '' : d.getFullYear() + '/') + (d.getMonth() + 1) + '/' + d.getDate(); };
 const isoDate = (t) => { const d = new Date(t); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 function svg(id) { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + id); s.append(u); return s; }
 function setIcon(btn, id) { btn.querySelector('use').setAttribute('href', '#i-' + id); }
@@ -153,7 +153,7 @@ function fileMd() {
     return [`### ${itemTitle(it)}`, head, it.url ? `<${it.url}>` : '', it.text || ''].filter(Boolean).join('\n');
   };
   const act = live.filter((i) => !i.archived), arc = live.filter((i) => i.archived);
-  return `# Clip\n\n${act.map(block).join('\n\n')}\n\n## アーカイブ\n\n${arc.map(block).join('\n\n')}\n`;
+  return `# Atode\n\n${act.map(block).join('\n\n')}\n\n## アーカイブ\n\n${arc.map(block).join('\n\n')}\n`;
 }
 function canonicalJson() {
   const sorted = [...items].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -188,13 +188,28 @@ function render() {
   const list = visible();
   $('#count').textContent = list.length;
   const frag = document.createDocumentFragment();
-  for (const { it, v } of list) frag.append(row(it, v));
+  let g = null;
+  for (const { it, v } of list) {
+    const lb = groupOf(it);
+    if (lb !== g) { g = lb; const h = document.createElement('div'); h.className = 'gh'; h.textContent = lb; frag.append(h); }
+    frag.append(row(it, v));
+  }
   const box = $('#list'); box.textContent = '';
   if (!list.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = items.some((i) => !i.deleted) ? '該当なし' : 'クリップはまだありません'; box.append(e); }
   box.append(frag);
 }
+function groupOf(it) {
+  if (it.pinned) return 'ピン留め';
+  const d = new Date(it.createdAt), n = new Date(); const day = (x) => Math.floor((new Date(x.getFullYear(), x.getMonth(), x.getDate())) / 864e5);
+  const diff = day(n) - day(d);
+  if (diff <= 0) return '今日';
+  if (diff === 1) return '昨日';
+  if (diff < 7) return '今週';
+  if (d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth()) return '今月';
+  return d.getFullYear() === n.getFullYear() ? (d.getMonth() + 1) + '月' : d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+}
 function row(it, v) {
-  const el = document.createElement('div'); el.className = 'item' + (it.secret ? ' secret' : '');
+  const el = document.createElement('div'); el.className = 'item' + (it.secret ? ' secret' : '') + (v ? ' ' + v.kind : '');
   const k = document.createElement('span'); k.className = 'k';
   k.append(svg(!v ? 'lock' : v.kind === 'link' ? 'link' : v.kind === 'word' ? 'word' : 'note'));
   const b = document.createElement('div'); b.className = 'b';
@@ -208,14 +223,14 @@ function row(it, v) {
     if (v.url) { const h = document.createElement('span'); h.className = 'h'; h.textContent = host(v.url); m.append(h); }
     for (const t of v.tags || []) { const s = document.createElement('span'); s.className = 'tg'; s.textContent = '#' + t; m.append(s); }
   }
-  const d = document.createElement('span'); d.textContent = fmtDate(it.createdAt); m.prepend(d);
-  b.append(m);
+  if (m.childNodes.length) b.append(m);
   el.append(k, b);
-  if (it.pinned) { const p = document.createElement('span'); p.className = 'pin'; p.append(svg('pin')); el.append(p); }
+  const r = document.createElement('div'); r.className = 'r';
+  const d = document.createElement('span'); d.className = 'd'; d.textContent = fmtDate(it.createdAt); r.append(d);
   const a = document.createElement('div'); a.className = 'a';
   if (v?.url) { const o = document.createElement('a'); o.className = 'ib sm'; o.title = '開く'; o.href = v.url; o.target = '_blank'; o.rel = 'noopener noreferrer'; o.append(svg('ext')); o.onclick = (e) => e.stopPropagation(); a.append(o); }
   if (v) { const c = document.createElement('button'); c.className = 'ib sm'; c.title = 'コピー'; c.append(svg('copy')); c.onclick = (e) => { e.stopPropagation(); copyText(v.url && !v.text ? v.url : [v.title, v.text, v.url].filter(Boolean).join('\n')); }; a.append(c); }
-  el.append(a);
+  r.append(a); el.append(r);
   el.onclick = async () => { if (!v && !(await unlock())) return; openEdit(it.id); };
   return el;
 }
@@ -403,7 +418,7 @@ function base() { return location.origin + location.pathname; }
 function openSettings() {
   $('#sKey').value = appKey(); $('#sKey').hidden = !!DEFAULT_APP_KEY;
   $('#sConnect').textContent = connected() ? '切断' : '接続';
-  const bm = `javascript:(()=>{const s=String(getSelection());window.open('${base()}?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)+(s?'&text='+encodeURIComponent(s):''),'clip','width=420,height=360')})()`;
+  const bm = `javascript:(()=>{const s=String(getSelection());window.open('${base()}?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)+(s?'&text='+encodeURIComponent(s):''),'atode','width=420,height=360')})()`;
   $('#sBookmarklet').href = bm;
   $('#sShortcut').value = base() + '?text=';
   lockLabel(); updateLockBtn();
@@ -439,7 +454,7 @@ $('#sVault').onclick = async () => {
 };
 $('#sExport').onclick = () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([fileMd()], { type: 'text/markdown' }));
-  a.download = `clip-${isoDate(Date.now())}.md`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  a.download = `atode-${isoDate(Date.now())}.md`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 
 /* ---------- Google Keep import ---------- */
@@ -510,7 +525,8 @@ async function handleParams() {
   if (!v.url && !v.text && v.title) { v.text = v.title; v.title = ''; v.kind = kindOf(v); }
   await addClip(v);
   toast('保存しました');
-  if (window.name === 'clip' && window.opener) setTimeout(() => { sync().finally(() => window.close()); }, 300);
+  if (p.get('src') === 'ext') { await sync(); location.hash = 'saved'; return; }
+  if (window.name === 'atode' && window.opener) setTimeout(() => { sync().finally(() => window.close()); }, 300);
 }
 
 /* ---------- boot ---------- */
