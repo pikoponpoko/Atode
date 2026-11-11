@@ -1,4 +1,5 @@
 // Atode — クリップ＆メモ。データは端末内とDropbox（アプリフォルダ）に保存。
+import { THEME_KEYS, THEMES } from './themes.js';
 const DEFAULT_APP_KEY = '83k9w84j8h7m2t4';
 const DBX_JSON = '/atode.json';
 const DBX_MD = '/atode.md';
@@ -561,6 +562,62 @@ function renderDisplay() {
 $('#sFont').onchange = (e) => { disp.font = e.target.value; save('atode.display', disp); applyDisplay(); document.fonts?.ready.then(render); };
 applyDisplay();
 
+/* ---------- theme ---------- */
+const THEME_LIST = [{ id: 'default', n: 'デフォルト', sw: ['#FFFFFF', '#F3F4F7', '#0E1116', '#3355FF', '#7C4DFF', '#E5484D', '#1F9D55'], dk: 0 }, ...THEMES];
+const TONES = [['auto', '自動'], ['light', 'ライト'], ['dark', 'ダーク']];
+const thm = { id: 'default', tone: 'auto', ...load('atode.theme', {}) };
+if (!THEME_LIST.some((t) => t.id === thm.id)) thm.id = 'default';
+const darkMq = matchMedia('(prefers-color-scheme: dark)');
+const effTone = () => (thm.tone === 'auto' ? (darkMq.matches ? 'dark' : 'light') : thm.tone);
+function applyTheme() {
+  const r = document.documentElement, t = THEMES.find((x) => x.id === thm.id), tn = effTone();
+  THEME_KEYS.forEach((k) => r.style.removeProperty(k));
+  r.setAttribute('data-theme', tn);
+  if (t) THEME_KEYS.forEach((k, i) => r.style.setProperty(k, t[tn[0]][i]));
+  r.style.colorScheme = tn;
+  const bg = getComputedStyle(r).getPropertyValue('--bg').trim();
+  document.querySelectorAll('meta[name=theme-color]').forEach((m) => m.setAttribute('content', bg));
+}
+darkMq.addEventListener?.('change', () => { if (thm.tone === 'auto') applyTheme(); });
+function setTheme(id, tone) { thm.id = id; if (tone) thm.tone = tone; save('atode.theme', thm); applyTheme(); syncTheme(); }
+function buildTheme() {
+  const seg = $('#sTone'); seg.textContent = '';
+  for (const [v, label] of TONES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.v = v; b.textContent = label; b.onclick = () => setTheme(thm.id, v); seg.append(b); }
+  const g = $('#sTheme'); g.textContent = '';
+  for (const t of THEME_LIST) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tbtn' + (t.dk ? ' dk' : ''); b.dataset.v = t.id; b.title = t.n;
+    const sw = document.createElement('span'); sw.className = 'sw';
+    for (const c of t.sw) { const i = document.createElement('i'); i.style.background = c; sw.append(i); }
+    const tn = document.createElement('span'); tn.className = 'tn'; tn.textContent = t.n; tn.dataset.full = t.n;
+    b.append(sw, tn);
+    b.onclick = () => { const dt = t.def || 'light'; setTheme(t.id, dt === 'light' && thm.tone === 'auto' ? null : dt); };
+    g.append(b);
+  }
+  const bs = [...g.children], rem = bs.length % 3;
+  if (rem === 1) bs[bs.length - 1].style.gridColumn = 'span 3';
+  else if (rem === 2) bs[bs.length - 1].style.gridColumn = 'span 2';
+}
+function fitThemeNames() {
+  const m = document.createElement('canvas').getContext('2d'), ff = getComputedStyle(document.body).fontFamily;
+  m.font = '700 100px ' + ff;
+  document.querySelectorAll('#sTheme .tbtn').forEach((b) => {
+    const tn = b.querySelector('.tn'), avail = b.clientWidth - 22; if (avail < 20) return;
+    const full = tn.dataset.full; tn.textContent = full; tn.style.whiteSpace = 'nowrap';
+    const fs1 = (100 * avail) / m.measureText(full).width;
+    if (fs1 >= 8.6) { tn.style.fontSize = Math.min(11, fs1).toFixed(1) + 'px'; return; }
+    const ch = Array.from(full), half = Math.ceil(ch.length / 2), l1 = ch.slice(0, half).join(''), l2 = ch.slice(half).join('');
+    tn.textContent = ''; tn.append(l1, document.createElement('br'), l2);
+    const w2 = Math.max(m.measureText(l1).width, m.measureText(l2).width);
+    tn.style.fontSize = Math.min(11, (100 * avail) / w2).toFixed(1) + 'px';
+  });
+}
+function syncTheme() {
+  document.querySelectorAll('#sTone button').forEach((b) => b.classList.toggle('on', b.dataset.v === thm.tone));
+  document.querySelectorAll('#sTheme .tbtn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === thm.id)));
+}
+function renderTheme() { if (!$('#sTheme').children.length) buildTheme(); syncTheme(); requestAnimationFrame(fitThemeNames); }
+applyTheme();
+
 /* ---------- auto lock ---------- */
 const LOCK_OPTS = [1, 5, 15, 60, 0];
 let lockMin = load(LS.lock, 5); let hiddenAt = 0;
@@ -685,7 +742,7 @@ function openSettings() {
   const bm = `javascript:(()=>{const s=String(getSelection());window.open('${base()}?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)+(s?'&text='+encodeURIComponent(s):''),'atode','width=420,height=360')})()`;
   $('#sBookmarklet').href = bm;
   $('#sShortcut').value = base() + '?text=';
-  lockLabel(); updateLockBtn(); renderDisplay();
+  lockLabel(); updateLockBtn(); renderDisplay(); renderTheme();
   renderSettingsStatus();
   $('#dlgSettings').showModal();
 }
