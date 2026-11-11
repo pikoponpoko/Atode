@@ -218,7 +218,7 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 .card.sel{border-color:var(--accent);outline:1px solid var(--accent);outline-offset:-1px}
 .selecting .card.sel .ck,.card.sel .ck{opacity:1;background:var(--accent);color:var(--on-accent);outline:0}
 .selecting .card .acts,.selecting .card .pinb{visibility:hidden}
-@media (hover:none){.card .ck{opacity:.9;background:var(--bg);color:var(--faint);outline:1.5px solid var(--line);outline-offset:-1.5px;top:6px;left:auto;right:36px}}
+@media (hover:none){.card .ck{display:none}.selecting .card .ck{display:flex}}
 
 /* checklist */
 .card .body p{-webkit-line-clamp:6}
@@ -277,8 +277,8 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 .ctx .sw:hover{border-color:var(--sub)}
 .ctx .sw.on{outline:2px solid var(--accent);outline-offset:1px}
 
-.sel{height:32px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;min-width:0}
-.row .sel{flex:1}
+select.sel{height:32px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;min-width:0}
+.row select.sel{flex:1}
 .sizes{display:flex;gap:1px;background:var(--surface);border-radius:8px;padding:2px;flex:none}
 .sizes button{height:28px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--sub)}
 .sizes button.on{background:var(--bg);color:var(--text);outline:1px solid var(--line);outline-offset:-1px}
