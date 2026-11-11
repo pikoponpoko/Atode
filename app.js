@@ -350,6 +350,8 @@ async function setColor(list, c) {
   render();
 }
 
+// コピー時は行頭の「・」「•」やチェックボックス記号を外す
+const stripBullets = (t) => (t || '').replace(/^([ \t\u3000]*)(?:[・•‧･]|[-*]\s\[[ xX]\])[ \t\u3000]?/gm, '$1');
 function iconBtn(icon, title, fn, cls = '') {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'ib sm ' + cls; b.title = title; b.append(svg(icon));
   b.onclick = (e) => { e.stopPropagation(); fn(); }; return b;
@@ -373,7 +375,7 @@ function card(it, v) {
   const pin = iconBtn('pin', it.pinned ? 'ピン留めを外す' : 'ピン留め', () => patch(it, { pinned: !it.pinned }), 'pinb' + (it.pinned ? ' on' : ''));
   el.append(pin);
   const bar = document.createElement('div'); bar.className = 'acts';
-  if (v) bar.append(iconBtn('copy', 'コピー', () => copyText(v.url && !v.text && !v.title ? v.url : [v.title, v.text, v.url].filter(Boolean).join('\n'))));
+  if (v) bar.append(iconBtn('copy', 'コピー', () => copyText(v.url && !v.text && !v.title ? v.url : [v.title, stripBullets(v.text), v.url].filter(Boolean).join('\n'))));
   bar.append(iconBtn('archive', it.archived ? 'アーカイブから戻す' : 'アーカイブ', () => patch(it, { archived: !it.archived })));
   bar.append(iconBtn('trash', '削除', () => removeWithUndo(it.id), 'danger'));
   if (!v) bar.querySelectorAll('button:not(.danger)').forEach((b) => (b.disabled = true));
