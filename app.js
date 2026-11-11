@@ -32,7 +32,11 @@ const isoDate = (t) => { const d = new Date(t); const p = (x) => String(x).padSt
 function svg(id) { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + id); s.append(u); return s; }
 function setIcon(btn, id) { btn.querySelector('use').setAttribute('href', '#i-' + id); }
 let toastT;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 1800); }
+function toast(msg, action, fn) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT);
+  if (action) { const b = document.createElement('button'); b.textContent = action; b.onclick = () => { t.hidden = true; fn(); }; t.append(b); }
+  toastT = setTimeout(() => (t.hidden = true), action ? 6000 : 1800);
+}
 async function copyText(s) { try { await navigator.clipboard.writeText(s); toast('コピーしました'); } catch { toast('コピーできませんでした'); } }
 
 function kindOf({ title, text, url }) {
@@ -187,54 +191,59 @@ function render() {
   renderTags();
   const list = visible();
   $('#count').textContent = list.length;
-  const frag = document.createDocumentFragment();
-  let g = null;
-  for (const { it, v } of list) {
-    const lb = groupOf(it);
-    if (lb !== g) { g = lb; const h = document.createElement('div'); h.className = 'gh'; h.textContent = lb; frag.append(h); }
-    frag.append(row(it, v));
-  }
   const box = $('#list'); box.textContent = '';
-  if (!list.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = items.some((i) => !i.deleted) ? '該当なし' : 'クリップはまだありません'; box.append(e); }
-  box.append(frag);
+  if (!list.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = items.some((i) => !i.deleted) ? '該当なし' : 'クリップはまだありません'; box.append(e); return; }
+  const pinned = list.filter((x) => x.it.pinned), rest = list.filter((x) => !x.it.pinned);
+  const section = (label, arr) => {
+    if (!arr.length) return;
+    if (label) { const h = document.createElement('div'); h.className = 'gh'; h.textContent = label; box.append(h); }
+    const g = document.createElement('div'); g.className = 'grid';
+    for (const { it, v } of arr) g.append(card(it, v));
+    box.append(g);
+  };
+  section(pinned.length ? 'ピン留め' : '', pinned);
+  section(pinned.length ? 'その他' : '', rest);
 }
-function groupOf(it) {
-  if (it.pinned) return 'ピン留め';
-  const d = new Date(it.createdAt), n = new Date(); const day = (x) => Math.floor((new Date(x.getFullYear(), x.getMonth(), x.getDate())) / 864e5);
-  const diff = day(n) - day(d);
-  if (diff <= 0) return '今日';
-  if (diff === 1) return '昨日';
-  if (diff < 7) return '今週';
-  if (d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth()) return '今月';
-  return d.getFullYear() === n.getFullYear() ? (d.getMonth() + 1) + '月' : d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+function iconBtn(icon, title, fn, cls = '') {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'ib sm ' + cls; b.title = title; b.append(svg(icon));
+  b.onclick = (e) => { e.stopPropagation(); fn(); }; return b;
 }
-function row(it, v) {
-  const el = document.createElement('div'); el.className = 'item' + (it.secret ? ' secret' : '') + (v ? ' ' + v.kind : '');
-  const k = document.createElement('span'); k.className = 'k';
-  k.append(svg(!v ? 'lock' : v.kind === 'link' ? 'link' : v.kind === 'word' ? 'word' : 'note'));
-  const b = document.createElement('div'); b.className = 'b';
-  const m = document.createElement('div'); m.className = 'm';
+async function patch(it, fields) { const v = view(it); if (!v) return; await upsert({ ...it, ...fields }, { title: v.title, text: v.text, url: v.url, tags: v.tags, kind: v.kind }); render(); }
+function card(it, v) {
+  const el = document.createElement('article'); el.className = 'card' + (it.secret ? ' secret' : '') + (v ? ' ' + v.kind : '');
   if (!v) {
-    const t = document.createElement('div'); t.className = 't'; t.textContent = '鍵付きクリップ'; b.append(t);
+    const t = document.createElement('div'); t.className = 'locked'; t.append(svg('lock')); t.append('鍵付き'); el.append(t);
   } else {
-    if (v.title) { const t = document.createElement('div'); t.className = 't'; t.textContent = v.title; b.append(t); }
-    const body = v.text || (!v.title ? v.url : '');
-    if (body) { const x = document.createElement('div'); x.className = 'x'; x.textContent = body; b.append(x); }
-    if (v.url) { const h = document.createElement('span'); h.className = 'h'; h.textContent = host(v.url); m.append(h); }
-    for (const t of v.tags || []) { const s = document.createElement('span'); s.className = 'tg'; s.textContent = '#' + t; m.append(s); }
+    if (v.title) { const t = document.createElement('h4'); t.textContent = v.title; el.append(t); }
+    if (v.text) { const x = document.createElement('p'); x.textContent = v.text; el.append(x); }
+    if (v.url) {
+      const a = document.createElement('a'); a.className = 'lk'; a.href = v.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.onclick = (e) => e.stopPropagation();
+      a.append(svg('link')); const h = document.createElement('span'); h.textContent = v.title || v.text ? host(v.url) : v.url.replace(/^https?:\/\/(www\.)?/, ''); a.append(h); el.append(a);
+    }
+    if (v.tags?.length) { const tg = document.createElement('div'); tg.className = 'tgs'; for (const t of v.tags) { const s = document.createElement('span'); s.textContent = t; tg.append(s); } el.append(tg); }
   }
-  if (m.childNodes.length) b.append(m);
-  el.append(k, b);
-  const r = document.createElement('div'); r.className = 'r';
-  const d = document.createElement('span'); d.className = 'd'; d.textContent = fmtDate(it.createdAt); r.append(d);
-  const a = document.createElement('div'); a.className = 'a';
-  if (v?.url) { const o = document.createElement('a'); o.className = 'ib sm'; o.title = '開く'; o.href = v.url; o.target = '_blank'; o.rel = 'noopener noreferrer'; o.append(svg('ext')); o.onclick = (e) => e.stopPropagation(); a.append(o); }
-  if (v) { const c = document.createElement('button'); c.className = 'ib sm'; c.title = 'コピー'; c.append(svg('copy')); c.onclick = (e) => { e.stopPropagation(); copyText(v.url && !v.text ? v.url : [v.title, v.text, v.url].filter(Boolean).join('\n')); }; a.append(c); }
-  r.append(a); el.append(r);
+  const pin = iconBtn('pin', it.pinned ? 'ピン留めを外す' : 'ピン留め', () => patch(it, { pinned: !it.pinned }), 'pinb' + (it.pinned ? ' on' : ''));
+  el.append(pin);
+  const bar = document.createElement('div'); bar.className = 'acts';
+  if (v) bar.append(iconBtn('copy', 'コピー', () => copyText(v.url && !v.text && !v.title ? v.url : [v.title, v.text, v.url].filter(Boolean).join('\n'))));
+  bar.append(iconBtn('archive', it.archived ? 'アーカイブから戻す' : 'アーカイブ', () => patch(it, { archived: !it.archived })));
+  bar.append(iconBtn('trash', '削除', () => removeWithUndo(it.id), 'danger'));
+  if (!v) bar.querySelectorAll('button:not(.danger)').forEach((b) => (b.disabled = true));
+  el.append(bar);
   el.onclick = async () => { if (!v && !(await unlock())) return; openEdit(it.id); };
   return el;
 }
-
+function removeWithUndo(id) {
+  const prev = items.find((x) => x.id === id); if (!prev) return;
+  const keepPlain = plain.get(id);
+  remove(id); render();
+  toast('削除しました', '元に戻す', () => {
+    const i = items.findIndex((x) => x.id === id);
+    items[i] = { ...prev, updatedAt: Date.now() + 1 };
+    if (keepPlain) plain.set(id, keepPlain);
+    persist(); render();
+  });
+}
 /* ---------- edit dialog ---------- */
 let editing = null;
 function openEdit(id) {
