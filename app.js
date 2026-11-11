@@ -1,5 +1,5 @@
 // Clip — クリップ＆メモ。データは端末内とDropbox（アプリフォルダ）に保存。
-const DEFAULT_APP_KEY = '';
+const DEFAULT_APP_KEY = '83k9w84j8h7m2t4';
 const DBX_JSON = '/clips.json';
 const DBX_MD = '/clips.md';
 const PBKDF2_ITER = 600000;
