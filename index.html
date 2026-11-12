@@ -20,7 +20,7 @@
 <body>
 <header class="bar">
   <span class="brand"><svg class="mark" viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6"/><path d="M9.5 13.5a3 3 0 0 0 4.24 0l2.25-2.25a3 3 0 0 0-4.24-4.24l-.75.75M14.5 10.5a3 3 0 0 0-4.24 0l-2.25 2.25a3 3 0 0 0 4.24 4.24l.75-.75"/></svg>Atode</span>
-  <label class="search"><svg><use href="#i-search"/></svg><input id="q" type="search" placeholder="検索" autocomplete="off"></label>
+  <label class="search"><svg><use href="#i-search"/></svg><input id="q" type="search" placeholder="検索" title="検索（/）" autocomplete="off"></label>
   <button id="btnSync" class="ib" title="同期"><svg><use href="#i-cloud-off"/></svg></button>
   <button id="btnLock" class="ib" title="鍵付きクリップを開く"><svg><use href="#i-lock"/></svg></button>
   <button id="btnCopyAll" class="ib" title="表示中をMarkdownでコピー"><svg><use href="#i-copy"/></svg></button>
@@ -31,6 +31,7 @@
   <span id="selCount"></span>
   <span class="grow"></span>
   <button id="selPin" class="ib" title="ピン留め"><svg><use href="#i-pin"/></svg></button>
+  <button id="selRead" class="ib" title="既読にする"><svg><use href="#i-read"/></svg></button>
   <button id="selColor" class="ib" title="色"><svg><use href="#i-palette"/></svg></button>
   <button id="selCopy" class="ib" title="Markdownでコピー"><svg><use href="#i-copy"/></svg></button>
   <button id="selArc" class="ib" title="アーカイブ"><svg><use href="#i-archive"/></svg></button>
@@ -53,8 +54,11 @@
     <button data-k="note" title="メモ"><svg><use href="#i-note"/></svg></button>
     <button data-k="secret" title="鍵付き"><svg><use href="#i-lock"/></svg></button>
   </div>
-  <button id="btnArchive" class="ib sm" title="アーカイブを表示" aria-pressed="false"><svg><use href="#i-archive"/></svg></button>
-  <button id="btnSort" class="ib sm" title="新しい順"><svg><use href="#i-sort-new"/></svg></button>
+  <button id="btnUnread" class="ib sm fb" title="未読のリンク" aria-pressed="false"><svg><use href="#i-unread"/></svg></button>
+  <button id="btnArchive" class="ib sm fb" title="アーカイブ" aria-pressed="false"><svg><use href="#i-archive"/></svg></button>
+  <button id="btnTrash" class="ib sm fb" title="ゴミ箱" aria-pressed="false"><svg><use href="#i-trash"/></svg></button>
+  <button id="btnSort" class="ib sm fb" title="新しい順"><svg><use href="#i-sort-new"/></svg></button>
+  <button id="btnLayout" class="ib sm fb" title="リスト表示"><svg><use href="#i-rows"/></svg></button>
   <div class="tags" id="tags"></div>
   <span class="count" id="count"></span>
 </nav>
@@ -103,6 +107,7 @@
     <section>
       <h3>表示</h3>
       <div class="row"><select id="sFont" class="sel" title="フォント"></select><div class="sizes" id="sSize"></div></div>
+      <div class="row"><button type="button" id="sAutoArc" class="btn">開いたリンクをアーカイブ: オフ</button></div>
     </section>
     <section>
       <div class="row"><h3 class="grow">テーマ</h3><div class="sizes" id="sTone"></div></div>
@@ -124,6 +129,7 @@
       <div class="row">
         <label class="btn">Google Keepから読み込む<input id="sImport" type="file" accept=".zip,.json" multiple hidden></label>
         <button type="button" id="sExport" class="btn">Markdownで書き出す</button>
+        <button type="button" id="sRevs" class="btn">Dropboxの履歴から復元</button>
       </div>
       <p id="sImportMsg" class="msg"></p>
     </section>
@@ -131,6 +137,14 @@
       <h3>鍵付きクリップ</h3>
       <div class="row"><button type="button" id="sVault" class="btn">合言葉を設定</button><button type="button" id="sAutoLock" class="btn">自動ロック: 5分</button></div>
     </section>
+  </form>
+</dialog>
+
+ <dialog id="dlgRevs" class="dlg narrow">
+  <form method="dialog">
+    <div class="dh"><b>Dropboxの履歴</b><span class="grow"></span><button value="cancel" class="ib" title="閉じる"><svg><use href="#i-x"/></svg></button></div>
+    <p id="rMsg" class="msg"></p>
+    <div id="rList" class="rlist"></div>
   </form>
 </dialog>
 
@@ -162,6 +176,12 @@
     <symbol id="i-sort-new" viewBox="0 0 24 24"><path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M14 6h7M14 11h5M14 16h3"/></symbol>
     <symbol id="i-sort-old" viewBox="0 0 24 24"><path d="M7 20V4M3.5 7.5 7 4l3.5 3.5M14 6h3M14 11h5M14 16h7"/></symbol>
     <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.4-1.3-1.8-1.3-3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol>
+    <symbol id="i-restore" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6L4 8.7M4 4v4.7h4.7"/></symbol>
+    <symbol id="i-unread" viewBox="0 0 24 24"><path d="M20 12.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h8.5"/><circle cx="19" cy="6" r="2.5"/></symbol>
+    <symbol id="i-read" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-sort-upd" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-rows" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="9" rx="1.5"/><rect x="13" y="4" width="7" height="5" rx="1.5"/><rect x="4" y="15" width="7" height="5" rx="1.5"/><rect x="13" y="11" width="7" height="9" rx="1.5"/></symbol>
     <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
   </defs>
 </svg>
