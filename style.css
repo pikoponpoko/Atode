@@ -221,9 +221,7 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 @media (hover:none){.card .ck{display:none}.selecting .card .ck{display:flex}}
 
 /* checklist */
-.card .body p{-webkit-line-clamp:6}
-.cbr span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.card .more{padding:2px 0 0 24px;color:var(--faint);font-size:calc(12px*var(--fz))}
+.card .body p{display:block}
 .cbr{display:flex;align-items:flex-start;gap:8px;padding:2px 0;line-height:1.6}
 .cbr .cb{display:flex;align-items:center;justify-content:center;flex:none;width:16px;height:16px;margin-top:.2em;padding:0;border:1.5px solid var(--faint);border-radius:4px;background:none;color:transparent;cursor:pointer}
 .cbr .cb svg{width:12px;height:12px;stroke-width:2.6}
