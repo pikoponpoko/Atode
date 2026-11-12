@@ -220,7 +220,13 @@ function renderTags() {
     box.append(b);
   });
 }
+// 再描画中に一覧が空になってもスクロール位置が先頭に飛ばないよう、高さと位置を保つ
 function render() {
+  const box = $('#list'), y = scrollY;
+  box.style.minHeight = box.offsetHeight + 'px';
+  try { renderList(); } finally { box.style.minHeight = ''; if (scrollY !== y) scrollTo(0, y); }
+}
+function renderList() {
   renderTags();
   const list = visible();
   $('#count').textContent = list.length;
@@ -264,19 +270,15 @@ let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(
 
 /* ---------- checklist ---------- */
 const CB_RE = /^(\s*)[-*]\s\[( |x|X)\]\s?(.*)$/;
-const CARD_ROWS = 10;
 function bodyEl(it, v) {
   const lines = v.text.split('\n');
   if (!lines.some((l) => CB_RE.test(l))) { const x = document.createElement('p'); x.textContent = v.text; return x; }
   const body = document.createElement('div'); body.className = 'body';
-  let buf = [], shown = 0, rest = 0;
-  const flush = () => { if (!buf.length) return; const x = document.createElement('p'); x.textContent = buf.join('\n'); body.append(x); shown += Math.min(buf.length, 6); buf = []; };
+  let buf = [];
+  const flush = () => { if (!buf.length) return; const x = document.createElement('p'); x.textContent = buf.join('\n'); body.append(x); buf = []; };
   lines.forEach((l, i) => {
-    if (shown >= CARD_ROWS) { if (l.trim()) rest++; return; }
     const m = l.match(CB_RE); if (!m) { buf.push(l); return; }
     flush();
-    if (shown >= CARD_ROWS) { rest++; return; }
-    shown++;
     const on = m[2] !== ' ';
     const row = document.createElement('div'); row.className = 'cbr' + (on ? ' on' : ''); row.style.paddingLeft = Math.min(m[1].length, 8) * 6 + 'px';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'cb'; b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', on); b.append(svg('check'));
@@ -286,7 +288,6 @@ function bodyEl(it, v) {
     body.append(row);
   });
   flush();
-  if (rest) { const x = document.createElement('div'); x.className = 'more'; x.textContent = '+' + rest; body.append(x); }
   return body;
 }
 /* チェックした項目はチェックリストの塊の末尾へ、外した項目は未チェックの末尾へ移す */
