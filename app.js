@@ -270,19 +270,41 @@ let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(
 
 /* ---------- checklist ---------- */
 const CB_RE = /^(\s*)[-*]\s\[( |x|X)\]\s?(.*)$/;
+/* 本文中のURL。末尾の句読点・閉じ括弧はURLに含めない */
+const TXT_URL_RE = /https?:\/\/[^\s<>"'`「」『』（）【】、。，．]+/g;
+const trimUrl = (u) => {
+  for (;;) {
+    const t = u.replace(/[.,;:!?\]}>'"]+$/, '');
+    if (t.endsWith(')') && (t.match(/\(/g) || []).length < (t.match(/\)/g) || []).length) { u = t.slice(0, -1); continue; }
+    if (t === u) return u; u = t;
+  }
+};
+function urlsIn(t) { return [...new Set([...(t || '').matchAll(TXT_URL_RE)].map((m) => trimUrl(m[0])).filter((u) => u.length > 10))]; }
+function linkText(el, text) {
+  let at = 0;
+  for (const m of (text || '').matchAll(TXT_URL_RE)) {
+    const u = trimUrl(m[0]); if (u.length <= 10) continue;
+    if (m.index > at) el.append(text.slice(at, m.index));
+    const a = document.createElement('a'); a.className = 'il'; a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = u;
+    a.onclick = (e) => { if (sel.size) { e.preventDefault(); return; } e.stopPropagation(); };
+    el.append(a); at = m.index + u.length;
+  }
+  if (at < (text || '').length) el.append(text.slice(at));
+  return el;
+}
 function bodyEl(it, v) {
   const lines = v.text.split('\n');
-  if (!lines.some((l) => CB_RE.test(l))) { const x = document.createElement('p'); x.textContent = v.text; return x; }
+  if (!lines.some((l) => CB_RE.test(l))) return linkText(document.createElement('p'), v.text);
   const body = document.createElement('div'); body.className = 'body';
   let buf = [];
-  const flush = () => { if (!buf.length) return; const x = document.createElement('p'); x.textContent = buf.join('\n'); body.append(x); buf = []; };
+  const flush = () => { if (!buf.length) return; body.append(linkText(document.createElement('p'), buf.join('\n'))); buf = []; };
   lines.forEach((l, i) => {
     const m = l.match(CB_RE); if (!m) { buf.push(l); return; }
     flush();
     const on = m[2] !== ' ';
     const row = document.createElement('div'); row.className = 'cbr' + (on ? ' on' : ''); row.style.paddingLeft = Math.min(m[1].length, 8) * 6 + 'px';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'cb'; b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', on); b.append(svg('check'));
-    const t = document.createElement('span'); t.textContent = m[3];
+    const t = linkText(document.createElement('span'), m[3]);
     row.append(b, t);
     b.onclick = (e) => { e.stopPropagation(); if (sel.size) return toggleSel(it.id); toggleCheck(it, i); };
     body.append(row);
@@ -487,6 +509,17 @@ function syncEditBtns() {
   const dc = cardColor({ color: editing.color }, editVals()); if (dc) $('#dlgEdit').dataset.color = dc; else delete $('#dlgEdit').dataset.color;
   $('#eArc').title = editing.archived ? 'アーカイブから戻す' : 'アーカイブ';
   $('#eKind').textContent = ''; $('#eKind').append(svg(kindOf(editVals()) === 'link' ? 'link' : kindOf(editVals()) === 'word' ? 'word' : 'note'));
+  syncLinks();
+}
+/* 本文中のURLを編集欄の下に開けるリンクとして並べる（textarea内はリンクにできないため） */
+function syncLinks() {
+  const box = $('#eLinks'), us = urlsIn($('#eText').value).filter((u) => u !== $('#eUrl').value.trim());
+  if (box.dataset.u === us.join('\n')) return;
+  box.dataset.u = us.join('\n'); box.textContent = ''; box.hidden = !us.length;
+  for (const u of us) {
+    const a = document.createElement('a'); a.className = 'lk'; a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = u; a.append(svg('ext'));
+    const h = document.createElement('span'); h.textContent = u.replace(/^https?:\/\/(www\.)?/, ''); a.append(h); box.append(a);
+  }
 }
 function editVals() {
   const { tags } = parseTags($('#eTags').value.replace(/(^|\s)(?!#)(\S+)/g, '$1#$2'));

@@ -115,6 +115,13 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 .card p{white-space:pre-wrap;line-height:1.75;text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:12;-webkit-box-orient:vertical;overflow:hidden}
 .card.word p:only-child,.card.word h4 + p{font-size:calc(15px*var(--fz));font-weight:500;line-height:1.55;font-feature-settings:"palt" 1;letter-spacing:.02em}
 .card h4 + p{color:var(--sub)}
+.il{color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;overflow-wrap:anywhere;-webkit-touch-callout:default}
+.il:hover{text-decoration-thickness:2px}
+.elinks{display:flex;flex-wrap:wrap;gap:4px}
+.elinks .lk{display:flex;align-items:center;gap:5px;max-width:100%;padding:4px 8px;border-radius:7px;background:var(--chip);color:var(--sub);font-size:12px;text-decoration:none;overflow:hidden}
+.elinks .lk:hover{color:var(--accent)}
+.elinks .lk svg{flex:none;width:12px;height:12px;color:var(--accent)}
+.elinks .lk span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .lk{display:flex;align-items:center;gap:6px;margin-top:8px;padding:6px 8px;border-radius:7px;background:var(--chip);color:var(--sub);font-size:calc(12px*var(--fz));text-decoration:none;overflow:hidden}
 .card .lk:hover{color:var(--accent)}
 .card .lk svg{width:13px;height:13px;color:var(--accent)}
