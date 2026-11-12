@@ -1,0 +1,42 @@
+name: Chrome拡張をビルド
+
+on:
+  push:
+    branches: [main]
+    paths: ['extension/**']
+  pull_request:
+    paths: ['extension/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: バージョンを取得
+        id: ver
+        run: echo "version=$(jq -r .version extension/manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: zipを作成
+        run: cd extension && zip -X -r ../atode-extension.zip . -x '.*'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atode-extension-${{ steps.ver.outputs.version }}
+          path: atode-extension.zip
+
+      - name: リリースに添付
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: extension-v${{ steps.ver.outputs.version }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" atode-extension.zip --clobber
+          else
+            gh release create "$TAG" atode-extension.zip --title "Chrome拡張 v${{ steps.ver.outputs.version }}" --notes "" --latest=false
+          fi

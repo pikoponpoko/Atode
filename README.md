@@ -13,3 +13,9 @@ PCとスマホから記事・ワード・リンクをすぐ保存できるメモ
 
 - Android（Chrome）: メニューの「アプリをインストール」（または設定の「アプリとしてインストール」）でホーム画面に追加すると、共有メニューに Atode が出る
 - iPhone: Safari の共有 →「ホーム画面に追加」。PWA は共有先に出られないので、ショートカットで Dropbox の `/アプリ/Atode/atode-inbox.txt` に1行ずつ追記し、Atode が次の同期で取り込んで消す（行は URL エンコード可）
+
+## Chrome拡張
+
+- ソースは `extension/`。`extension/` を変更して main にマージすると、GitHub Actions が `atode-extension.zip` を作り、リリース `extension-v<バージョン>` に添付する
+- 更新時は `extension/manifest.json` の `version` を上げる（同じバージョンのままだと既存リリースの zip を差し替え）
+- インストール: zip を展開 → `chrome://extensions` → デベロッパーモード →「パッケージ化されていない拡張機能を読み込む」で展開したフォルダを選ぶ
