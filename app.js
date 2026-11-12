@@ -270,8 +270,17 @@ let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(
 
 /* ---------- checklist ---------- */
 const CB_RE = /^(\s*)[-*]\s\[( |x|X)\]\s?(.*)$/;
+/* チェックリストの塊ごとに、チェック済みを末尾へ寄せた並び（元の行番号の配列）を返す */
+function checkOrder(lines) {
+  const ord = []; let blk = [];
+  const flush = () => { ord.push(...blk.filter((k) => !/^\s*[-*]\s\[[xX]\]/.test(lines[k])), ...blk.filter((k) => /^\s*[-*]\s\[[xX]\]/.test(lines[k]))); blk = []; };
+  lines.forEach((l, k) => { if (CB_RE.test(l)) blk.push(k); else { flush(); ord.push(k); } });
+  flush();
+  return ord;
+}
+const sortChecks = (lines) => checkOrder(lines).map((k) => lines[k]);
 function bodyEl(it, v) {
-  const lines = v.text.split('\n');
+  const lines = sortChecks(v.text.split('\n'));
   if (!lines.some((l) => CB_RE.test(l))) { const x = document.createElement('p'); x.textContent = v.text; return x; }
   const body = document.createElement('div'); body.className = 'body';
   let buf = [];
@@ -303,7 +312,7 @@ function reorderCheck(arr, i, on, isCb, isOn) {
 }
 async function toggleCheck(it, i) {
   const v = view(it); if (!v) return;
-  const lines = v.text.split('\n'); const m = lines[i].match(CB_RE); if (!m) return;
+  const lines = sortChecks(v.text.split('\n')); const m = lines[i].match(CB_RE); if (!m) return;
   lines[i] = lines[i].replace(/\[( |x|X)\]/, m[2] === ' ' ? '[x]' : '[ ]');
   reorderCheck(lines, i, m[2] === ' ', (l) => CB_RE.test(l), (l) => /^\s*[-*]\s\[[xX]\]/.test(l));
   const cur = items.find((x) => x.id === it.id);
@@ -503,7 +512,8 @@ function setListMode(on) {
 }
 function buildList() {
   eList.textContent = '';
-  const lines = $('#eText').value.replace(/\s+$/, '').split('\n');
+  const lines = sortChecks($('#eText').value.replace(/\s+$/, '').split('\n'));
+  $('#eText').value = lines.join('\n');
   lines.forEach((l) => { const m = l.match(CB_RE); eList.append(m ? erow(m[3], true, m[2] !== ' ', m[1]) : erow(l, false)); });
   const add = document.createElement('button'); add.type = 'button'; add.className = 'eadd'; add.title = '項目を追加'; add.append(svg('plus'));
   add.onclick = () => { const r = erow('', true); add.before(r); focusRow(r, 0); serializeList(); };
