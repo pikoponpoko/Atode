@@ -18,7 +18,7 @@ let items = load(LS.items, []);
 let meta = load(LS.meta, {});
 let vaultKey = null;
 const plain = new Map(); // 鍵付きクリップの復号結果（メモリ内のみ）
-const ui = { kind: '', tag: '', q: '', view: '', unread: false, secretNew: false, sort: load(LS.sort, 'new'), rows: load('atode.rows', false) };
+const ui = { kind: '', tag: '', q: '', view: '', unread: false, secretNew: false, sort: load(LS.sort, 'new'), rows: load('atode.rows', false), pinOpen: load('atode.pinOpen', false) };
 const COLORS = [['', 'なし'], ['gray', 'グレー'], ['green', '緑'], ['blue', '青'], ['purple', '紫'], ['red', '赤']];
 let tagc = load(LS.tagc, { at: 0, map: {} });
 const cardColor = (it, v) => it.color || (v?.tags || []).map((t) => tagc.map[t]).find(Boolean) || '';
@@ -300,7 +300,16 @@ function renderList() {
     if (ui.rows) { const r = document.createElement('div'); r.className = 'rows'; for (const { it, v } of arr) r.append(rowCard(it, v)); box.append(r); }
     else box.append(masonry(arr.map(({ it, v }) => card(it, v)), box));
   };
-  section(pinned.length ? 'ピン留め' : '', pinned);
+  if (pinned.length) {
+    const h = document.createElement('button'); h.type = 'button'; h.className = 'gh ghb' + (ui.pinOpen ? ' open' : '');
+    h.title = ui.pinOpen ? 'たたむ' : '展開'; h.setAttribute('aria-expanded', ui.pinOpen);
+    const n = document.createElement('span'); n.className = 'ghn'; n.textContent = pinned.length;
+    h.append('ピン留め', n, svg('chev'));
+    h.onclick = () => { ui.pinOpen = !ui.pinOpen; save('atode.pinOpen', ui.pinOpen); render(); };
+    box.append(h);
+    if (ui.pinOpen) section('', pinned);
+    else { const r = document.createElement('div'); r.className = 'pins'; for (const { it, v } of pinned) r.append(rowCard(it, v)); box.append(r); }
+  }
   section(pinned.length ? 'その他' : '', rest);
   section('アーカイブ', arc);
 }

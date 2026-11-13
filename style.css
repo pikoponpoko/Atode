@@ -381,3 +381,24 @@ body.dropping .cbox{border-color:var(--accent);outline:3px solid var(--accent-so
 .rrow span:last-child{color:var(--faint);font-size:calc(12px*var(--fz))}
 .rrow:disabled{cursor:default;color:var(--faint)}
 .rrow:disabled:hover{background:none}
+
+/* pinned: collapsible header + compact chips */
+.ghb{display:flex;align-items:center;gap:6px;border:0;background:none;cursor:pointer;font-family:inherit}
+.ghb:hover{color:var(--text)}
+.ghb .ghn{font-weight:500;font-variant-numeric:tabular-nums}
+.ghb svg{width:12px;height:12px;transition:transform .15s}
+.ghb.open svg{transform:rotate(90deg)}
+.pins{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.pins .card.rc{flex:0 1 auto;max-width:240px;min-height:0;height:30px;gap:6px;padding:0 10px 0 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.pins .card.rc[data-color]{background:var(--cc);border-color:var(--cc)}
+.pins .card.rc:hover{background:var(--surface)}
+.pins .card.rc[data-color]:hover{border-color:color-mix(in srgb,var(--text) 15%,var(--cc));background:var(--cc)}
+.pins .card.rc:focus-visible{outline-offset:1px;border-radius:8px}
+.pins .card.rc.sel{background:var(--accent-soft);border-color:var(--accent)}
+.pins .rc .rk{width:16px;height:16px}
+.pins .rc .rk svg{width:14px;height:14px}
+.pins .rc .rk img{width:14px;height:14px}
+.pins .rc .rt span,.pins .rc .tgs,.pins .rc time,.pins .rc .acts,.pins .rc:hover time{display:none!important}
+.pins .rc .rt{gap:0}
+.selecting .pins .rc .ck{display:flex}
+
