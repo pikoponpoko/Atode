@@ -763,7 +763,12 @@ function askPass({ title, confirm: twice = false, verify = null, message = '' })
 const cin = $('#cin');
 const grow = () => { cin.style.height = 'auto'; cin.style.height = Math.min(cin.scrollHeight + 2, innerHeight * 0.4) + 'px'; };
 cin.addEventListener('input', grow);
-cin.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#composer').requestSubmit(); } });
+const touchKb = matchMedia('(pointer: coarse)').matches;
+cin.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229 || e.shiftKey || e.altKey) return;
+  if (touchKb && !(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault(); $('#composer').requestSubmit();
+});
 $('#composer').onsubmit = async (e) => {
   e.preventDefault();
   const raw = cin.value.trim(); if (!raw) return;
