@@ -6,7 +6,7 @@ const DBX_MD = '/atode.md';
 const PBKDF2_ITER = 600000;
 
 const $ = (s) => document.querySelector(s);
-const LS = { autoArc: 'atode.autoarc', items: 'atode.items', meta: 'atode.meta', tok: 'atode.dbx', key: 'atode.appkey', rev: 'atode.rev', tagc: 'atode.tagcolors', sort: 'atode.sort', og: 'atode.og', pkce: 'atode.pkce', lock: 'atode.autolock', last: 'atode.lastsync' };
+const LS = { autoArc: 'atode.autoarc', items: 'atode.items', meta: 'atode.meta', tok: 'atode.dbx', key: 'atode.appkey', rev: 'atode.rev', tagc: 'atode.tagcolors', sort: 'atode.sort', og: 'atode.og', pkce: 'atode.pkce', lock: 'atode.autolock', last: 'atode.lastsync', dirty: 'atode.dirty' };
 const KIND = { link: 'リンク', word: 'ワード', note: 'メモ' };
 const SENSITIVE = /パスワード|password|passwd|credential|api\s*key|secret\s*key|access\s*key|リカバリ(?:ー)?コード|recovery\s*code|\bpass\s*[:：]|\bPW\b|pw\s*[:：]|暗証|パス\s*[:：]|ログイン/i;
 
@@ -978,19 +978,25 @@ async function applyInbox() {
   if (n) toast(n + '件を受け取りました');
 }
 let syncing = false, syncAgain = false, syncT;
-function scheduleSync() { clearTimeout(syncT); syncT = setTimeout(sync, 1200); }
+// 未同期の変更がある時刻。オフライン中の変更も端末内に残り、つながったら送る
+let dirtyAt = load(LS.dirty, 0);
+function scheduleSync() { dirtyAt = Date.now(); save(LS.dirty, dirtyAt); clearTimeout(syncT); syncT = setTimeout(sync, 1200); }
+const isNetErr = (e) => e instanceof TypeError || !navigator.onLine;
 function setSync(state, msg = '') {
-  const b = $('#btnSync'); b.classList.remove('spin', 'warn', 'ok');
+  const b = $('#btnSync'); b.classList.remove('spin', 'warn', 'ok', 'pending');
   if (state === 'off') { setIcon(b, 'cloud-off'); b.title = 'Dropbox未接続'; }
+  if (state === 'offline') { setIcon(b, 'cloud-off'); b.classList.toggle('pending', !!dirtyAt); b.title = dirtyAt ? 'オフライン（未同期の変更あり）' : 'オフライン'; }
   if (state === 'busy') { setIcon(b, 'sync'); b.classList.add('spin'); b.title = '同期中'; }
   if (state === 'ok') { setIcon(b, 'cloud'); b.classList.add('ok'); b.title = '同期済み ' + fmtDate(load(LS.last, Date.now())); }
   if (state === 'err') { setIcon(b, 'alert'); b.classList.add('warn'); b.title = msg || '同期エラー'; }
   renderSettingsStatus(state, msg);
 }
 async function sync() {
-  if (!connected() || !navigator.onLine) return setSync(connected() ? 'err' : 'off', connected() ? 'オフライン' : '');
+  if (!connected()) return setSync('off');
+  if (!navigator.onLine) return setSync('offline');
   if (syncing) { syncAgain = true; return; }
   syncing = true; setSync('busy');
+  const startAt = dirtyAt;
   try {
     for (let attempt = 0; ; attempt++) {
       const remote = await dbxDownload(DBX_JSON);
@@ -1014,11 +1020,13 @@ async function sync() {
     if (purgeEmpty() + purgeTrash()) save(LS.items, items);
     checkSensitive();
     save(LS.last, Date.now());
+    if (dirtyAt === startAt) { dirtyAt = 0; save(LS.dirty, 0); }
     render(); updateLockBtn(); setSync('ok');
-  } catch (e) { setSync('err', e.message); }
+  } catch (e) { if (isNetErr(e)) setSync('offline'); else setSync('err', e.message); }
   finally { syncing = false; if (syncAgain) { syncAgain = false; sync(); } }
 }
-addEventListener('online', sync);
+addEventListener('online', () => { sync(); pumpOg(); });
+addEventListener('offline', () => { if (connected() && !syncing) setSync('offline'); });
 setInterval(() => { if (!document.hidden) sync(); }, 60000);
 
 /* ---------- settings ---------- */
