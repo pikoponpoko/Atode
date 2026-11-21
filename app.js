@@ -777,6 +777,8 @@ $('#composer').onsubmit = async (e) => {
 };
 function syncSecretNew() { const b = $('#btnSecretNew'); b.setAttribute('aria-pressed', ui.secretNew); setIcon(b, ui.secretNew ? 'lock' : 'unlock'); b.classList.toggle('secret-on', ui.secretNew); }
 $('#btnSecretNew').onclick = () => { ui.secretNew = !ui.secretNew; syncSecretNew(); };
+const newClip = () => { scrollTo(0, 0); cin.focus(); };
+$('#fab').onclick = newClip;
 
 /* ---------- filters / toolbar ---------- */
 $('#kinds').onclick = async (e) => {
@@ -788,7 +790,7 @@ const SORTS = [['new', 'sort-new', '新しい順'], ['old', 'sort-old', '古い�
 function syncSort() { const [, ic, t] = SORTS.find((x) => x[0] === ui.sort) || SORTS[0]; const b = $('#btnSort'); setIcon(b, ic); b.title = t; }
 $('#btnSort').onclick = () => { ui.sort = SORTS[(SORTS.findIndex((x) => x[0] === ui.sort) + 1) % SORTS.length][0]; save(LS.sort, ui.sort); syncSort(); render(); };
 function syncFilters() {
-  $('#btnArchive').setAttribute('aria-pressed', ui.view === 'archive'); $('#btnTrash').setAttribute('aria-pressed', ui.view === 'trash');
+  $('#btnArchive').setAttribute('aria-pressed', ui.view === 'archive'); $('#btnTrash').setAttribute('aria-pressed', ui.view === 'trash'); document.body.classList.toggle('trash-view', ui.view === 'trash');
   $('#btnUnread').setAttribute('aria-pressed', ui.unread);
   const b = $('#btnLayout'); setIcon(b, ui.rows ? 'grid' : 'rows'); b.title = ui.rows ? 'カード表示' : 'リスト表示';
 }
@@ -1228,7 +1230,7 @@ document.addEventListener('keydown', (e) => {
   if (KEYS[e.key]) { e.preventDefault(); moveFocus(KEYS[e.key]); return; }
   switch (e.key) {
     case '/': e.preventDefault(); $('#q').focus(); $('#q').select(); return;
-    case 'n': e.preventDefault(); scrollTo(0, 0); cin.focus(); return;
+    case 'n': e.preventDefault(); newClip(); return;
   }
   if (!it) return;
   const gone = (fn) => { focusNext = neighborId(cur); fn(); };

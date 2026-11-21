@@ -106,7 +106,7 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 .count{flex:none;letter-spacing:0;min-width:24px;text-align:right;color:var(--faint);font-size:calc(11px*var(--fz));font-variant-numeric:tabular-nums}
 
 /* list */
-.list{padding:4px var(--pad) 40px}
+.list{padding:4px var(--pad) 84px}
 .gh{padding:14px 2px 6px;color:var(--faint);font-size:calc(11px*var(--fz));font-weight:600;letter-spacing:.04em}
 .grid{display:flex;align-items:flex-start;gap:10px}
 .col{flex:1;min-width:0}
@@ -404,3 +404,12 @@ body.dropping .cbox{border-color:var(--accent);outline:3px solid var(--accent-so
 .pins .rc .rt{gap:0}
 .selecting .pins .rc .ck{display:flex}
 
+
+/* fab */
+.fab{position:fixed;right:calc(16px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));z-index:6;display:flex;align-items:center;justify-content:center;width:48px;height:48px;border:0;border-radius:14px;background:var(--accent);color:var(--on-accent);cursor:pointer;transition:filter .12s,transform .12s}
+.fab svg{width:24px;height:24px;stroke-width:2.2}
+.fab:hover{filter:brightness(1.08)}
+.fab:active{transform:scale(.94)}
+body.trash-view .fab,body:has(.selbar:not([hidden])) .fab{display:none}
+@media (pointer:coarse){body:has(input:focus,textarea:focus) .fab{display:none}}
+@media (max-width:600px){.toast{bottom:calc(76px + env(safe-area-inset-bottom))}}
